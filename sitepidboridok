@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Підборідочні бої — Турніри</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-dark: #060913;
+            --accent-blue: #00e5ff;
+            --accent-glow: rgba(0, 229, 255, 0.4);
+            --card-bg: rgba(20, 27, 41, 0.75);
+            --fighter-bg: rgba(13, 19, 30, 0.85);
+            --text-main: #ffffff;
+            --winner-green: #00e676;
+            --loser-red: #ff1744;
+            --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #04060f, #0b1424, #03050a);
+            background-size: 400% 400%;
+            animation: liveGradient 15s ease infinite;
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px 20px 100px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent; /* Прибирає сірий спалах на iOS */
+        }
+
+        @keyframes liveGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Плавна поява сторінок */
+        .page {
+            display: none;
+            width: 100%;
+            max-width: 1200px;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .page.active {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            width: 100%;
+        }
+
+        h1 {
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin: 0;
+            font-size: 24px;
+            text-shadow: 0 0 20px var(--accent-glow);
+            text-align: center;
+        }
+
+        /* Стильні та чутливі кнопки */
+        button, .tab-btn, .chat-link-item, .tournament-card, .leader-clickable {
+            touch-action: manipulation; /* Прибирає 300мс затримки на мобільних */
+        }
+
+        .admin-gear {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 26px;
+            color: #64748b;
+            transition: color var(--transition-fast), transform 0.5s ease;
+            padding: 5px;
+        }
+        .admin-gear:hover { color: var(--accent-blue); transform: rotate(90deg); }
+        .admin-gear.active { color: var(--winner-green); text-shadow: 0 0 10px rgba(0, 230, 118, 0.5); transform: rotate(180deg); }
+
+        .tabs-container {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 25px;
+            background: rgba(13, 19, 30, 0.6);
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #64748b;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all var(--transition-fast);
+        }
+        .tab-btn.active {
+            background: var(--card-bg);
+            color: var(--accent-blue);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.15), inset 0 0 10px rgba(0, 229, 255, 0.05);
+            border: 1px solid rgba(0, 229, 255, 0.2);
+        }
+
+        .content-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        /* Картки з мікро-анімацією натискання */
+        .tournament-card {
+            background: var(--card-bg);
+            border: 1.5px solid #1e293b;
+            border-radius: 16px;
+            padding: 18px 22px;
+            font-size: 16px;
+            font-weight: 600;
+            backdrop-filter: blur(8px);
+            transition: transform 0.1s ease, border-color var(--transition-fast), box-shadow var(--transition-fast);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tournament-card:active {
+            transform: scale(0.98);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+        .tournament-info { cursor: pointer; flex-grow: 1; }
+
+        /* Стильний Лідерборд */
+        .leader-card {
+            background: var(--card-bg);
+            border: 1.5px solid #1e293b;
+            border-radius: 16px;
+            padding: 16px;
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: border-color var(--transition-fast);
+        }
+        .leader-row { display: flex; justify-content: space-between; align-items: center; }
+        
+        .leader-clickable {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            flex-grow: 1;
+            transition: transform 0.1s ease;
+        }
+        .leader-clickable:active { transform: scale(0.98); }
+
+        .mini-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #1e293b;
+            border: 1.5px solid var(--accent-blue);
+            object-fit: cover;
+            box-shadow: 0 0 8px rgba(0, 229, 255, 0.2);
+        }
+        .leader-rank { font-weight: 800; color: #64748b; font-size: 15px; min-width: 28px; }
+        .leader-rank.rank-1 { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .leader-rank.rank-2 { color: #e2e8f0; text-shadow: 0 0 8px rgba(255, 255, 255, 0.3); }
+        .leader-rank.rank-3 { color: #ffaa66; }
+        
+        .leader-name { font-weight: 700; font-size: 16px; letter-spacing: 0.3px; }
+        .leader-stats { display: flex; gap: 12px; align-items: center; }
+        .kd-badge {
+            background: rgba(0, 229, 255, 0.08);
+            color: var(--accent-blue);
+            padding: 3px 9px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-family: monospace;
+            border: 1px solid rgba(0, 229, 255, 0.15);
+        }
+
+        .admin-controls { display: none; gap: 8px; align-items: center; }
+        body.admin-mode .admin-controls { display: flex; }
+        
+        .btn-action { 
+            background: rgba(30, 41, 59, 0.5); 
+            border: 1px solid #334155; 
+            cursor: pointer; 
+            font-size: 15px; 
+            padding: 6px; 
+            border-radius: 8px;
+            transition: all var(--transition-fast);
+        }
+        .btn-action:active { transform: scale(0.85); background: #334155; }
+        
+        .stat-edit-btn {
+            background: #1e293b;
+            color: white;
+            border: 1px solid #334155;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all var(--transition-fast);
+        }
+        .stat-edit-btn:active { background: var(--accent-blue); color: black; transform: scale(0.9); }
+
+        .btn-add-global {
+            display: none;
+            background: rgba(0, 229, 255, 0.03);
+            border: 2px dashed rgba(0, 229, 255, 0.4);
+            color: var(--accent-blue);
+            padding: 15px;
+            border-radius: 16px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+            max-width: 500px;
+            transition: all var(--transition-fast);
+        }
+        .btn-add-global:active { background: rgba(0, 229, 255, 0.1); transform: scale(0.99); }
+        body.admin-mode .btn-add-global { display: block; }
+
+        .admin-panel {
+            display: none;
+            background: rgba(20, 27, 41, 0.95);
+            border: 1.5px solid var(--accent-blue);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 25px;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        body.admin-mode .admin-panel { display: flex; }
+        .admin-panel input[type="number"] {
+            background: var(--bg-dark);
+            border: 1px solid #334155;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 10px;
+            width: 70px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .admin-panel button {
+            background: var(--accent-blue);
+            color: black;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .admin-panel button:active { transform: scale(0.95); }
+
+        /* Турнірна Сітка */
+        .bracket {
+            display: flex;
+            gap: 40px;
+            width: 100%;
+            padding: 20px 10px;
+            overflow-x: auto;
+            justify-content: flex-start;
+            align-items: center;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        .round { display: flex; flex-direction: column; justify-content: space-around; gap: 30px; min-height: 520px; min-width: 220px; }
+        .matchup { 
+            background: var(--card-bg); 
+            border: 1.5px solid #1e293b; 
+            border-radius: 16px; 
+            width: 220px; 
+            padding: 12px; 
+            box-sizing: border-box;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .match-title { font-size: 11px; color: #64748b; text-align: center; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .fighter { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            background: var(--fighter-bg); 
+            padding: 10px 12px; 
+            margin: 6px 0; 
+            border-radius: 10px; 
+            border: 1.5px solid transparent; 
+            transition: all var(--transition-fast);
+        }
+        .fighter-name-wrapper {
+            cursor: pointer;
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .fighter-name-wrapper:active { opacity: 0.7; }
+        .match-controls { display: none; }
+        body.admin-mode .match-controls { display: flex; }
+        
+        .winner { border-color: var(--winner-green) !important; background: rgba(0, 230, 118, 0.05) !important; }
+        .winner .fighter-name-wrapper { color: var(--winner-green) !important; font-weight: 700; }
+        .loser { border-color: var(--loser-red) !important; opacity: 0.4; }
+        .loser .fighter-name-wrapper { color: var(--loser-red) !important; text-decoration: line-through; }
+
+        .btn-back { background: none; border: 2px solid #334155; color: #64748b; padding: 12px 24px; border-radius: 12px; cursor: pointer; margin-top: 25px; font-weight: bold; transition: all var(--transition-fast); }
+        .btn-back:active { border-color: var(--accent-blue); color: var(--accent-blue); transform: scale(0.96); }
+
+        /* Нижнє Меню */
+        .app-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(6, 9, 19, 0.88); backdrop-filter: blur(16px); border-top: 1.5px solid rgba(255, 255, 255, 0.05); padding: 14px 20px; display: flex; justify-content: space-between; gap: 15px; box-sizing: border-box; z-index: 900; }
+        .footer-btn { flex: 1; background: var(--card-bg); border: 1.5px solid #1e293b; color: var(--text-main); padding: 14px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.1s ease, border-color var(--transition-fast); }
+        .footer-btn:active { transform: scale(0.95); border-color: var(--accent-blue); }
+        .footer-btn.donate-style { border-color: rgba(0, 229, 255, 0.3); box-shadow: 0 0 15px rgba(0, 229, 255, 0.1); color: var(--accent-blue); }
+
+        /* Модальні Вікна з анімацією виліту */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(3, 5, 10, 0.85); 
+            backdrop-filter: blur(6px); 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1000; 
+            padding: 15px; 
+            box-sizing: border-box;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        .modal.show { opacity: 1; }
+        
+        .modal-content { 
+            background: #0f1624; 
+            border: 1.5px solid rgba(0, 229, 255, 0.3); 
+            padding: 24px; 
+            border-radius: 20px; 
+            text-align: center; 
+            width: 100%; 
+            max-width: 360px; 
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 20px var(--accent-glow); 
+            box-sizing: border-box;
+            transform: scale(0.9);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal.show .modal-content { transform: scale(1); }
+
+        .modal-content input[type="password"], .modal-content input[type="text"], .modal-content input[type="number"] { 
+            background: #060913; 
+            border: 1.5px solid #22314d; 
+            color: white; 
+            padding: 12px; 
+            border-radius: 10px; 
+            font-size: 16px; 
+            text-align: center; 
+            outline: none; 
+            margin-bottom: 15px; 
+            width: 100%; 
+            box-sizing: border-box;
+            transition: border-color var(--transition-fast);
+        }
+        .modal-content input:focus { border-color: var(--accent-blue); }
+
+        .chat-links-list { display: flex; flex-direction: column; gap: 12px; margin: 20px 0; }
+        .chat-link-item { background: var(--fighter-bg); border: 1.5px solid #1e293b; padding: 14px; border-radius: 12px; color: white; text-decoration: none; font-weight: 600; font-size: 15px; display: flex; align-items: center; justify-content: space-between; transition: all var(--transition-fast); }
+        .chat-link-item:active { border-color: var(--accent-blue); background: rgba(0, 229, 255, 0.05); transform: scale(0.98); }
+        
+        .crypto-box { background: #060913; border: 1.5px dashed #22314d; padding: 14px; border-radius: 12px; font-family: monospace; font-size: 12px; color: #94a3b8; word-break: break-all; margin: 15px 0; user-select: all; }
+        
+        .modal-btn-action { background: var(--accent-blue); color: black; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 15px; width: 100%; box-sizing: border-box; transition: transform 0.1s; }
+        .modal-btn-action:active { transform: scale(0.96); }
+
+        /* Профіль Бійця */
+        .profile-box { text-align: left; }
+        .profile-avatar-container { display: flex; justify-content: center; margin-bottom: 18px; position: relative; }
+        .profile-img { width: 115px; height: 115px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-blue); background: #1e293b; box-shadow: 0 0 20px var(--accent-glow); }
+        .upload-label { display: none; position: absolute; bottom: 0; background: rgba(0,0,0,0.85); color: var(--accent-blue); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; cursor: pointer; border: 1px solid rgba(0, 229, 255, 0.3); }
+        body.admin-mode .upload-label { display: block; }
+        
+        .profile-name { font-size: 22px; font-weight: bold; color: var(--accent-blue); text-align: center; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; letter-spacing: 0.5px; }
+        .profile-grid { display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: #e2e8f0; }
+        
+        .profile-item { display: flex; justify-content: space-between; background: rgba(13, 19, 30, 0.6); padding: 10px 14px; border-radius: 10px; align-items: center; border: 1px solid rgba(255,255,255,0.02); }
+        .profile-item label { color: #94a3b8; font-weight: 500; }
+        .profile-item span { font-weight: 700; }
+        
+        .profile-item input { display: none; background: #060913; border: 1px solid #334155; color: white; padding: 6px 10px; border-radius: 8px; font-size: 13px; width: 130px; text-align: right; font-weight: bold; margin-bottom: 0; }
+        body.admin-mode .profile-item input { display: block; }
+        body.admin-mode .profile-item span { display: none; }
+        
+        .awards-area { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+        .awards-area input { width: 100% !important; text-align: left !important; box-sizing: border-box; }
+        .awards-area span { width: 100%; word-break: break-word; text-align: left; }
+    </style>
+</head>
+<body>
+
+    <!-- ВХІД В АДМІНКУ -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:var(--accent-blue);">Вхід в Адмінку</h3>
+            <input type="password" id="passInput" placeholder="Введіть пароль">
+            <button onclick="checkAdminPassword()" class="modal-btn-action">Увійти</button>
+            <button onclick="closeModal('passwordModal')" style="background:none; border:none; color:#64748b; margin-top:14px; cursor:pointer; font-weight:bold;">Скасувати</button>
+        </div>
+    </div>
+
+    <!-- РЕСУРСИ -->
+    <div id="chatsModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:var(--accent-blue); text-transform:uppercase;">💬 Наші Ресурси</h3>
+            <div class="chat-links-list">
+                <a href="https://t.me/pidboridok" target="_blank" class="chat-link-item"><span>🚀 Основний чат</span> ➔</a>
+                <a href="https://t.me/geyboilink" target="_blank" class="chat-link-item"><span>🔥 Додатковий чат</span> ➔</a>
+                <a href="https://t.me/pidboridokbot" target="_blank" class="chat-link-item"><span>🤖 Наш Telegram Бот</span> ➔</a>
+            </div>
+            <button onclick="closeModal('chatsModal')" class="modal-btn-action" style="background:#2c3e50; color:white;">Закрити</button>
+        </div>
+    </div>
+
+    <!-- ДОНАТ -->
+    <div id="donateModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:var(--accent-blue); text-transform:uppercase;">💎 Донат</h3>
+            <p style="font-size:13px; color:#94a3b8;">Надсилайте TON на наш офіційний гаманець:</p>
+            <div class="crypto-box" id="tonWalletAddress">UQCe4YHyEDgCwm3o2WntvgSUjkyYd_7tigG9S3IlwMnSZuX_</div>
+            <button onclick="copyWalletAddress()" class="modal-btn-action" id="copyBtn">📋 Скопіювати адресу</button>
+            <button onclick="closeModal('donateModal')" style="background:none; border:none; color:#64748b; margin-top:14px; cursor:pointer; font-weight:bold;">Закрити</button>
+        </div>
+    </div>
+
+    <!-- ПРОФІЛЬ БІЙЦЯ -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; padding: 22px;">
+            <div class="profile-box">
+                <div class="profile-avatar-container">
+                    <img src="" id="profViewImg" class="profile-img" alt="avatar">
+                    <label for="avatarUploadInput" class="upload-label">📸 Змінити</label>
+                    <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
+                </div>
+                <div id="profNameTitle" class="profile-name">Ім'я Бійця</div>
+                
+                <div class="profile-grid">
+                    <div class="profile-item">
+                        <label>Ім'я:</label>
+                        <span id="lbl-name"></span>
+                        <input type="text" id="edit-name">
+                    </div>
+                    <div class="profile-item">
+                        <label>Розмах рук:</label>
+                        <span id="lbl-arms"></span>
+                        <input type="text" id="edit-arms" placeholder="напр. 64 см">
+                    </div>
+                    <div class="profile-item">
+                        <label>Ріст:</label>
+                        <span id="lbl-height"></span>
+                        <input type="text" id="edit-height" placeholder="напр. 176 см">
+                    </div>
+                    <div class="profile-item">
+                        <label>Вага:</label>
+                        <span id="lbl-weight"></span>
+                        <input type="text" id="edit-weight" placeholder="напр. 72 кг">
+                    </div>
+                    <div class="profile-item">
+                        <label>Перемог:</label>
+                        <span id="lbl-wins" style="color:var(--winner-green)"></span>
+                        <input type="number" id="edit-wins">
+                    </div>
+                    <div class="profile-item">
+                        <label>Поразок:</label>
+                        <span id="lbl-losses" style="color:var(--loser-red)"></span>
+                        <input type="number" id="edit-losses">
+                    </div>
+                    <div class="profile-item">
+                        <label>Довжина підборідка:</label>
+                        <span id="lbl-chin"></span>
+                        <input type="text" id="edit-chin" placeholder="напр. 4 см">
+                    </div>
+                    <div class="profile-item awards-area">
+                        <label>Нагороди:</label>
+                        <span id="lbl-awards"></span>
+                        <input type="text" id="edit-awards" placeholder="Кубок, Медаль, Топ-1">
+                    </div>
+                </div>
+            </div>
+            <button onclick="saveProfileChanges()" class="modal-btn-action" style="margin-top: 18px;">💾 Зберегти зміни</button>
+            <button onclick="closeModal('profileModal')" style="background:none; border:none; color:#64748b; margin-top:14px; cursor:pointer; font-weight:bold; width:100%;">Закрити</button>
+        </div>
+    </div>
+
+    <!-- ГОЛОВНА СТОРІНКА -->
+    <div id="main-page" class="page active">
+        <div class="header-container">
+            <h1 id="main-title">🏆 Панель Турнірів 🏆</h1>
+            <button class="admin-gear" id="mainGear" onclick="openPasswordModal()">⚙️</button>
+        </div>
+
+        <div class="tabs-container">
+            <button class="tab-btn active" id="tab-tournaments" onclick="switchTab('tournaments')">⚔️ Турніри</button>
+            <button class="tab-btn" id="tab-leaderboard" onclick="switchTab('leaderboard')">🔥 Лідерборд</button>
+        </div>
+
+        <div id="tournaments-section" class="content-list">
+            <div id="tournaments-container"></div>
+            <button class="btn-add-tournament btn-add-global" onclick="addNewTournament()">➕ Додати новий турнір</button>
+        </div>
+
+        <div id="leaderboard-section" class="content-list" style="display: none;">
+            <div id="leaderboard-container"></div>
+            <button class="btn-add-fighter btn-add-global" onclick="addNewFighter()">➕ Додати бійця в Топ</button>
+        </div>
+    </div>
+
+    <!-- СТОРІНКА СІТКИ -->
+    <div id="bracket-page" class="page">
+        <div class="header-container">
+            <h1 id="active-tournament-title">Сітка боїв</h1>
+            <button class="admin-gear" id="bracketGear" onclick="openPasswordModal()">⚙️</button>
+        </div>
+
+        <div class="admin-panel">
+            <label>Кількість бійців:</label>
+            <input type="number" id="custom-size-input" min="2" max="64" value="8">
+            <button onclick="updateTournamentSize()">Згенерувати сітку</button>
+        </div>
+
+        <div class="bracket" id="bracket-grid"></div>
+        <button class="btn-back" onclick="goToMainPage()">Назад до списку</button>
+    </div>
+
+    <!-- ФУТЕР -->
+    <footer class="app-footer">
+        <button class="footer-btn" onclick="openModal('chatsModal')">💬 Наші чати</button>
+        <button class="footer-btn donate-style" onclick="openModal('donateModal')">💎 Донат</button>
+    </footer>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        if(tg) tg.expand();
+
+        function loadData(key, defaultData) {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : defaultData;
+        }
+        function saveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+
+        let tournamentsData = loadData('tournamentsData', [
+            { id: 1, title: "Турнір #1: Перша Кров", size: 8 },
+            { id: 2, title: "Турнір #2: Битва Чинців", size: 5 }
+        ]);
+
+        let fightersData = loadData('fightersData', [
+            { id: 1, name: "Хоронджук", wins: 0, losses: 0, arms: "64 см", height: "176 см", weight: "72 кг", chin: "0 см", awards: "Немає", avatar: "" },
+            { id: 2, name: "Чин-Хан", wins: 3, losses: 0, arms: "68 см", height: "180 см", weight: "78 кг", chin: "5 см", awards: "Чемпіон Маю", avatar: "" }
+        ]);
+
+        let currentTournamentId = null;
+        let currentTab = 'tournaments';
+        let activeProfileFighterId = null; 
+
+        function def(id){ return document.getElementById(id); }
+
+        // Плавне відкриття модалок
+        function openModal(id) {
+            const m = def(id);
+            m.style.display = 'flex';
+            setTimeout(() => m.classList.add('show'), 10);
+        }
+
+        // Плавне закриття модалок
+        function closeModal(id) {
+            const m = def(id);
+            m.classList.remove('show');
+            setTimeout(() => m.style.display = 'none', 250);
+        }
+
+        // Плавне перемикання вкладок/сторінок
+        function switchPage(fromId, toId, callback) {
+            const fromPage = def(fromId);
+            const toPage = def(toId);
+            
+            fromPage.style.opacity = '0';
+            fromPage.style.transform = 'translateY(10px)';
+            
+            setTimeout(() => {
+                fromPage.classList.remove('active');
+                if(callback) callback();
+                toPage.classList.add('active');
+                setTimeout(() => {
+                    toPage.style.opacity = '1';
+                    toPage.style.transform = 'translateY(0)';
+                }, 20);
+            }, 200);
+        }
+
+        function switchTab(tab) {
+            if(currentTab === tab) return;
+            currentTab = tab;
+            
+            const tSec = def('tournaments-section');
+            const lSec = def('leaderboard-section');
+            
+            if (tab === 'tournaments') {
+                def('tab-tournaments').classList.add('active');
+                def('tab-leaderboard').classList.remove('active');
+                lSec.style.display = 'none';
+                tSec.style.display = 'flex';
+                def('main-title').innerText = "🏆 Панель Турнірів 🏆";
+            } else {
+                def('tab-tournaments').classList.remove('active');
+                def('tab-leaderboard').classList.add('active');
+                tSec.style.display = 'none';
+                lSec.style.display = 'flex';
+                def('main-title').innerText = "👑 Топ Бійців 👑";
+                renderLeaderboard();
+            }
+        }
+
+        function openPasswordModal() {
+            if (document.body.classList.contains('admin-mode')) {
+                document.body.classList.remove('admin-mode');
+                def('mainGear').classList.remove('active');
+                def('bracketGear').classList.remove('active');
+                renderTournaments();
+                renderLeaderboard();
+                if(currentTournamentId) buildBracket(); 
+                return;
+            }
+            openModal('passwordModal');
+            def('passInput').focus();
+        }
+
+        def('passInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') checkAdminPassword(); });
+
+        function checkAdminPassword() {
+            if (def('passInput').value === "606060") {
+                document.body.classList.add('admin-mode');
+                def('mainGear').classList.add('active');
+                def('bracketGear').classList.add('active');
+                closeModal('passwordModal');
+                def('passInput').value = '';
+                renderTournaments();
+                renderLeaderboard();
+                if(currentTournamentId) buildBracket();
+            } else {
+                alert("Невірний пароль!");
+            }
+        }
+
+        function copyWalletAddress() {
+            const address = def('tonWalletAddress').innerText;
+            navigator.clipboard.writeText(address).then(() => {
+                const btn = def('copyBtn');
+                btn.innerText = "✅ Скопіювано!";
+                btn.style.background = "#00e676";
+                btn.style.color = "black";
+                setTimeout(() => { btn.innerText = "📋 Скопіювати адресу"; btn.style.background = "var(--accent-blue)"; btn.style.color = "black"; }, 2000);
+            });
+        }
+
+        /* ТУРНІРИ */
+        function renderTournaments() {
+            const container = def('tournaments-container');
+            container.innerHTML = "";
+            tournamentsData.forEach(t => {
+                container.innerHTML += `
+                    <div class="tournament-card" onclick="startTournament(${t.id}, '${t.title}', ${t.size})">
+                        <div class="tournament-info">
+                            <span>${t.title} (К-сть: ${t.size})</span>
+                        </div>
+                        <div class="admin-controls" onclick="event.stopPropagation();">
+                            <button class="btn-action" onclick="editTournamentName(event, ${t.id})">✏️</button>
+                            <button class="btn-action" onclick="deleteTournament(event, ${t.id})">❌</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addNewTournament() {
+            let name = prompt("Назва турніру:", "Новий турнір");
+            if (name) {
+                let newId = tournamentsData.length ? Math.max(...tournamentsData.map(t => t.id)) + 1 : 1;
+                tournamentsData.push({ id: newId, title: name, size: 8 });
+                saveData('tournamentsData', tournamentsData);
+                renderTournaments();
+            }
+        }
+
+        function editTournamentName(e, id) {
+            let tour = tournamentsData.find(t => t.id === id);
+            let newName = prompt("Нова назва:", tour.title);
+            if (newName) { tour.title = newName; saveData('tournamentsData', tournamentsData); renderTournaments(); }
+        }
+
+        function deleteTournament(e, id) {
+            if(confirm("Видалити цей турнір?")) {
+                tournamentsData = tournamentsData.filter(t => t.id !== id);
+                localStorage.removeItem(`bracket-data-t${id}`);
+                saveData('tournamentsData', tournamentsData);
+                renderTournaments();
+            }
+        }
+
+        /* ЛІДЕРБОРД */
+        function renderLeaderboard() {
+            const container = def('leaderboard-container');
+            container.innerHTML = "";
+
+            let sortedFighters = fightersData.map(f => {
+                let losses = parseInt(f.losses) || 0;
+                let wins = parseInt(f.wins) || 0;
+                let effectiveLosses = losses === 0 ? 1 : losses;
+                let kd = (wins / effectiveLosses).toFixed(2);
+                return { ...f, kd: parseFloat(kd) };
+            });
+
+            sortedFighters.sort((a, b) => b.kd - a.kd);
+
+            sortedFighters.forEach((f, index) => {
+                let rankClass = "";
+                if (index === 0) rankClass = "rank-1";
+                if (index === 1) rankClass = "rank-2";
+                if (index === 2) rankClass = "rank-3";
+
+                let av = f.avatar ? f.avatar : "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>";
+
+                container.innerHTML += `
+                    <div class="leader-card">
+                        <div class="leader-row">
+                            <div class="leader-clickable" onclick="openFighterProfileByName('${f.name}')">
+                                <img src="${av}" class="mini-avatar">
+                                <span class="leader-rank ${rankClass}">#${index + 1}</span>
+                                <span class="leader-name">${f.name}</span>
+                            </div>
+                            <div class="admin-controls">
+                                <button class="btn-action" onclick="deleteFighter(${f.id})">❌</button>
+                            </div>
+                        </div>
+                        <div class="leader-row" style="margin-top: 5px;">
+                            <div class="leader-stats" onclick="openFighterProfileByName('${f.name}')">
+                                <span>В: <strong style="color:var(--winner-green)">${f.wins}</strong></span>
+                                <span>П: <strong style="color:var(--loser-red)">${f.losses}</strong></span>
+                                <span class="kd-badge">KD: ${f.kd}</span>
+                            </div>
+                            <div class="admin-controls" style="gap: 4px;">
+                                <button class="stat-edit-btn" onclick="changeStat(${f.id}, 'wins', 1)">В +1</button>
+                                <button class="stat-edit-btn" onclick="changeStat(${f.id}, 'wins', -1)">В -1</button>
+                                <button class="stat-edit-btn" onclick="changeStat(${f.id}, 'losses', 1)">П +1</button>
+                                <button class="stat-edit-btn" onclick="changeStat(${f.id}, 'losses', -1)">П -1</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addNewFighter() {
+            let name = prompt("Введіть ім'я нового бійця:");
+            if (name) {
+                let exists = fightersData.find(f => f.name.toLowerCase() === name.toLowerCase());
+                if(exists) { alert("Боєць з таким іменем вже є в Лідерборді!"); return; }
+                
+                let newId = fightersData.length ? Math.max(...fightersData.map(f => f.id)) + 1 : 1;
+                fightersData.push({ id: newId, name: name, wins: 0, losses: 0, arms: "0 см", height: "0 см", weight: "0 кг", chin: "0 см", awards: "Немає", avatar: "" });
+                saveData('fightersData', fightersData);
+                renderLeaderboard();
+            }
+        }
+
+        function deleteFighter(id) {
+            if(confirm("Видалити бійця з рейтингу?")) {
+                fightersData = fightersData.filter(f => f.id !== id);
+                saveData('fightersData', fightersData);
+                renderLeaderboard();
+            }
+        }
+
+        function changeStat(id, stat, value) {
+            let fighter = fightersData.find(f => f.id === id);
+            if (fighter) {
+                fighter[stat] = (parseInt(fighter[stat]) || 0) + value;
+                if (fighter[stat] < 0) fighter[stat] = 0;
+                saveData('fightersData', fightersData);
+                renderLeaderboard();
+            }
+        }
+
+        /* МОДАЛКА ПРОФІЛЮ */
+        function openFighterProfileByName(name) {
+            let fighter = fightersData.find(f => f.name.trim().toLowerCase() === name.trim().toLowerCase());
+            if(!fighter) {
+                let newId = fightersData.length ? Math.max(...fightersData.map(f => f.id)) + 1 : 1;
+                fighter = { id: newId, name: name, wins: 0, losses: 0, arms: "0 см", height: "0 см", weight: "0 кг", chin: "0 см", awards: "Немає", avatar: "" };
+                fightersData.push(fighter);
+                saveData('fightersData', fightersData);
+            }
+
+            activeProfileFighterId = fighter.id;
+
+            def('profNameTitle').innerText = fighter.name;
+            def('lbl-name').innerText = fighter.name;
+            def('lbl-arms').innerText = fighter.arms || "0 см";
+            def('lbl-height').innerText = fighter.height || "0 см";
+            def('lbl-weight').innerText = fighter.weight || "0 кг";
+            def('lbl-wins').innerText = fighter.wins;
+            def('lbl-losses').innerText = fighter.losses;
+            def('lbl-chin').innerText = fighter.chin || "0 см";
+            def('lbl-awards').innerText = fighter.awards || "Немає";
+
+            def('edit-name').value = fighter.name;
+            def('edit-arms').value = fighter.arms || "";
+            def('edit-height').value = fighter.height || "";
+            def('edit-weight').value = fighter.weight || "";
+            def('edit-wins').value = fighter.wins;
+            def('edit-losses').value = fighter.losses;
+            def('edit-chin').value = fighter.chin || "";
+            def('edit-awards').value = fighter.awards || "";
+
+            if(fighter.avatar) {
+                def('profViewImg').src = fighter.avatar;
+            } else {
+                def('profViewImg').src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>";
+            }
+
+            openModal('profileModal');
+        }
+
+        function handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                def('profViewImg').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveProfileChanges() {
+            if(!document.body.classList.contains('admin-mode')) {
+                closeModal('profileModal');
+                return;
+            }
+
+            let fighter = fightersData.find(f => f.id === activeProfileFighterId);
+            if(fighter) {
+                fighter.name = def('edit-name').value.trim() || fighter.name;
+                fighter.arms = def('edit-arms').value.trim() || "0 см";
+                fighter.height = def('edit-height').value.trim() || "0 см";
+                fighter.weight = def('edit-weight').value.trim() || "0 кг";
+                fighter.wins = parseInt(def('edit-wins').value) || 0;
+                fighter.losses = parseInt(def('edit-losses').value) || 0;
+                fighter.chin = def('edit-chin').value.trim() || "0 см";
+                fighter.awards = def('edit-awards').value.trim() || "Немає";
+                
+                if(def('profViewImg').src && !def('profViewImg').src.startsWith('data:image/svg+xml')) {
+                    fighter.avatar = def('profViewImg').src;
+                }
+
+                saveData('fightersData', fightersData);
+                renderLeaderboard();
+                if(currentTournamentId) buildBracket();
+                
+                closeModal('profileModal');
+            }
+        }
+
+        /* СІТКА БОЇВ */
+        function startTournament(id, title, size) {
+            currentTournamentId = id;
+            switchPage('main-page', 'bracket-page', () => {
+                def('active-tournament-title').innerText = title;
+                def('custom-size-input').value = size;
+                buildBracket();
+            });
+        }
+
+        function updateTournamentSize() {
+            let size = parseInt(def('custom-size-input').value);
+            if (isNaN(size) || size < 2) size = 2;
+            let tour = tournamentsData.find(t => t.id === currentTournamentId);
+            if (tour) tour.size = size;
+            saveData('tournamentsData', tournamentsData);
+            localStorage.removeItem(`bracket-data-t${currentTournamentId}`);
+            buildBracket();
+        }
+
+        function goToMainPage() {
+            switchPage('bracket-page', 'main-page', () => {
+                currentTournamentId = null;
+                renderTournaments();
+            });
+        }
+
+        function saveBracketInputs() {
+            if (!currentTournamentId) return;
+            const bracketGrid = def('bracket-grid');
+            const blocks = bracketGrid.querySelectorAll('.fighter-name-wrapper');
+            let savedInputs = {};
+            blocks.forEach((block, idx) => {
+                savedInputs[idx] = block.innerText;
+            });
+            
+            let savedStatuses = {};
+            const fighters = bracketGrid.querySelectorAll('.fighter');
+            fighters.forEach(f => {
+                if(f.classList.contains('winner')) savedStatuses[f.id] = 'winner';
+                else if(f.classList.contains('loser')) savedStatuses[f.id] = 'loser';
+            });
+
+            saveData(`bracket-data-t${currentTournamentId}`, { names: savedInputs, statuses: savedStatuses });
+        }
+
+        function buildBracket() {
+            const size = parseInt(def('custom-size-input').value);
+            const container = def('bracket-grid');
+            container.innerHTML = "";
+
+            let nextPowerOfTwo = Math.pow(2, Math.ceil(Math.log2(size)));
+            let totalRounds = Math.log2(nextPowerOfTwo);
+            let matchesInRound = nextPowerOfTwo / 2;
+            let currentFightersCount = size;
+
+            let playersInFirstRound = (currentFightersCount - matchesInRound) * 2;
+            if (playersInFirstRound < 0) playersInFirstRound = 0;
+
+            let localBracketCache = loadData(`bracket-data-t${currentTournamentId}`, { names: {}, statuses: {} });
+            let blockCounter = 0;
+
+            for (let r = 1; r <= totalRounds; r++) {
+                let roundEl = document.createElement('div');
+                roundEl.className = "round";
+
+                let roundTitle = `Раунд 1/${matchesInRound * 2}`;
+                if (matchesInRound === 2) roundTitle = "Півфінал";
+                if (matchesInRound === 1) roundTitle = "Фінал";
+
+                for (let m = 1; m <= matchesInRound; m++) {
+                    let idA = `r${r}-m${m}-a`;
+                    let idB = `r${r}-m${m}-b`;
+                    let nextId = `r${r+1}-m${Math.ceil(m/2)}-${m % 2 !== 0 ? 'a' : 'b'}`;
+
+                    let currentIdxA = blockCounter++;
+                    let currentIdxB = blockCounter++;
+
+                    let nameA = localBracketCache.names[currentIdxA] || "?";
+                    let nameB = localBracketCache.names[currentIdxB] || "?";
+
+                    if (r === 1 && nameA === "?" && nameB === "?") {
+                        let baseIndex = (m - 1) * 2;
+                        if (baseIndex < playersInFirstRound) {
+                            nameA = `Боєць ${baseIndex + 1}`;
+                            nameB = `Боєць ${baseIndex + 2}`;
+                        } else {
+                            nameA = `Боєць ${playersInFirstRound + (m - (playersInFirstRound/2))}`;
+                            nameB = "— ПРОПУСКАЄ РАУНД —";
+                        }
+                    }
+
+                    let statusClassA = localBracketCache.statuses[idA] || "";
+                    let statusClassB = localBracketCache.statuses[idB] || "";
+
+                    roundEl.innerHTML += `
+                        <div class="matchup" id="match-block-r${r}-m${m}">
+                            <div class="match-title">${roundTitle} — Пара ${m}</div>
+                            <div class="fighter ${statusClassA}" id="${idA}">
+                                <div class="fighter-name-wrapper" onclick="handleFighterClick(this)">${nameA}</div>
+                                <div class="match-controls"><button class="btn-action" onclick="setWinner('${idA}', '${idB}', '${nextId}')">🏆</button></div>
+                            </div>
+                            <div class="fighter ${statusClassB}" id="${idB}">
+                                <div class="fighter-name-wrapper" onclick="handleFighterClick(this)">${nameB}</div>
+                                <div class="match-controls"><button class="btn-action" onclick="setWinner('${idB}', '${idA}', '${nextId}')">🏆</button></div>
+                            </div>
+                        </div>
+                    `;
+                }
+                container.appendChild(roundEl);
+
+                if (r === 1) {
+                    for (let m = 1; m <= matchesInRound; m++) {
+                        let idB = `r1-m${m}-b`;
+                        let elB = roundEl.querySelector(`#${idB}`);
+                        if (elB && elB.querySelector('.fighter-name-wrapper').innerText === "— ПРОПУСКАЄ РАУНД —") {
+                            let idA = `r1-m${m}-a`;
+                            let nextId = `r2-m${Math.ceil(m/2)}-${m % 2 !== 0 ? 'a' : 'b'}`;
+                            elB.style.opacity = "0.2";
+                            setTimeout(() => {
+                                let winnerName = document.getElementById(idA).querySelector('.fighter-name-wrapper').innerText;
+                                let nextEl = document.getElementById(nextId);
+                                if(nextEl && nextEl.querySelector('.fighter-name-wrapper').innerText === "?") {
+                                    nextEl.querySelector('.fighter-name-wrapper').innerText = winnerName;
+                                    saveBracketInputs();
+                                }
+                            }, 50);
+                        }
+                    }
+                }
+                matchesInRound /= 2;
+            }
+        }
+
+        function handleFighterClick(element) {
+            let currentName = element.innerText.trim();
+            if (currentName === "?" || currentName === "— ПРОПУСКАЄ РАУНД —") return;
+
+            if (document.body.classList.contains('admin-mode')) {
+                let newName = prompt("Змінити ім'я бійця в сітці:", currentName);
+                if (newName && newName.trim() !== "") {
+                    element.innerText = newName.trim();
+                    saveBracketInputs();
+                }
+            } else {
+                openFighterProfileByName(currentName);
+            }
+        }
+
+        function setWinner(winnerId, loserId, nextId) {
+            const winEl = def(winnerId);
+            const loseEl = def(loserId);
+            if(loseEl.querySelector('.fighter-name-wrapper').innerText === "— ПРОПУСКАЄ РАУНД —") return;
+
+            winEl.classList.remove('loser'); winEl.classList.add('winner');
+            loseEl.classList.remove('winner'); loseEl.classList.add('loser');
+
+            const winnerName = winEl.querySelector('.fighter-name-wrapper').innerText;
+            const nextEl = def(nextId);
+            if (nextEl) nextEl.querySelector('.fighter-name-wrapper').innerText = winnerName;
+            
+            saveBracketInputs();
+        }
+
+        renderTournaments();
+    </script>
+</body>
+</html>
