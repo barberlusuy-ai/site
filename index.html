@@ -3,91 +3,932 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Підборідочні бої</title>
+    <title>Підборідочні бої — Турніри</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg: #030509; --card: rgba(15, 20, 32, 0.7); --accent: #00e5ff;
-            --text: #ffffff; --green: #00e676; --red: #ff1744;
+            --bg-dark: #050814;
+            --accent-blue: #00e5ff;
+            --accent-glow: rgba(0, 229, 255, 0.35);
+            --card-bg: rgba(18, 26, 44, 0.65);
+            --fighter-bg: rgba(10, 16, 28, 0.85);
+            --text-main: #ffffff;
+            --winner-green: #00e676;
+            --loser-red: #ff1744;
+            --transition-fast: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; overflow-x: hidden; }
-        
-        /* Анімації */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate { animation: fadeIn 0.4s ease-out forwards; }
 
-        .container { padding: 20px; max-width: 500px; margin: auto; }
-        .header { text-align: center; padding: 40px 0; }
-        h1 { color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin: 0; }
-        
-        .card { background: var(--card); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; margin-bottom: 15px; backdrop-filter: blur(10px); transition: 0.3s; }
-        .card:active { transform: scale(0.98); border-color: var(--accent); }
+        body {
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #03050c, #091120, #020408);
+            background-size: 400% 400%;
+            animation: liveGradient 15s ease infinite;
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px 20px 110px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
 
-        .btn-refresh { background: var(--accent); color: #000; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
+        @keyframes liveGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
 
-        .kd-tag { background: rgba(0, 229, 255, 0.1); color: var(--accent); padding: 4px 8px; border-radius: 6px; font-family: monospace; }
+        /* QoL: Анімація плавної появи елементів */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
+            to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        .animate-fade-in {
+            animation: fadeInUp 0.4s cubic-bezier(0.215, 0.610, 0.355, 1) forwards;
+        }
+
+        .page {
+            display: none;
+            width: 100%;
+            max-width: 1200px;
+            flex-direction: column;
+            align-items: center;
+        }
+        .page.active {
+            display: flex;
+        }
+
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            width: 100%;
+        }
+
+        h1 {
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin: 0;
+            font-size: 24px;
+            text-shadow: 0 0 20px var(--accent-glow);
+            text-align: center;
+        }
+
+        .admin-gear {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 22px;
+            color: #64748b;
+            transition: all var(--transition-fast);
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .admin-gear:hover { color: var(--accent-blue); border-color: var(--accent-blue); transform: rotate(45deg); box-shadow: 0 0 10px var(--accent-glow); }
+        .admin-gear.active { color: var(--winner-green); border-color: var(--winner-green); text-shadow: 0 0 10px rgba(0, 230, 118, 0.5); transform: rotate(180deg); }
+
+        .tabs-container {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 25px;
+            background: rgba(8, 12, 22, 0.6);
+            padding: 6px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+        }
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #64748b;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all var(--transition-fast);
+        }
+        .tab-btn.active {
+            background: rgba(18, 26, 44, 0.9);
+            color: var(--accent-blue);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.18), inset 0 0 10px rgba(0, 229, 255, 0.05);
+            border: 1px solid rgba(0, 229, 255, 0.25);
+        }
+
+        .content-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        /* Ефект скла на картках */
+        .tournament-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 20px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            backdrop-filter: blur(14px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color var(--transition-fast), box-shadow var(--transition-fast);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            opacity: 0;
+        }
+        .tournament-card:hover, .tournament-card:active {
+            transform: translateY(-2px);
+            border-color: rgba(0, 229, 255, 0.35);
+            box-shadow: 0 10px 25px 0 rgba(0, 229, 255, 0.15);
+        }
+        .tournament-info { cursor: pointer; flex-grow: 1; display: flex; align-items: center; justify-content: space-between; }
+
+        .leader-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 18px;
+            backdrop-filter: blur(14px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color var(--transition-fast), box-shadow var(--transition-fast);
+            opacity: 0;
+        }
+        .leader-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(0, 229, 255, 0.35);
+            box-shadow: 0 10px 25px 0 rgba(0, 229, 255, 0.15);
+        }
+        .leader-row { display: flex; justify-content: space-between; align-items: center; }
         
-        .tab-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab { flex: 1; padding: 12px; text-align: center; background: #1a2233; border-radius: 12px; cursor: pointer; }
-        .tab.active { border: 1px solid var(--accent); color: var(--accent); }
+        .leader-clickable {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            flex-grow: 1;
+        }
+
+        .mini-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: #111827;
+            border: 1.5px solid var(--accent-blue);
+            object-fit: cover;
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.25);
+        }
+        .leader-rank { font-weight: 800; color: #4b5563; font-size: 16px; min-width: 30px; }
+        .leader-rank.rank-1 { color: #ffd700; text-shadow: 0 0 12px rgba(255, 215, 0, 0.5); }
+        .leader-rank.rank-2 { color: #cbd5e1; text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
+        .leader-rank.rank-3 { color: #f97316; text-shadow: 0 0 8px rgba(249, 115, 22, 0.3); }
+        
+        .leader-name { font-weight: 700; font-size: 17px; letter-spacing: 0.3px; }
+        .leader-stats { display: flex; gap: 14px; align-items: center; }
+        
+        .kd-badge {
+            background: rgba(0, 229, 255, 0.08);
+            color: var(--accent-blue);
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-family: monospace;
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            box-shadow: inset 0 0 8px rgba(0, 229, 255, 0.05);
+        }
+
+        .admin-controls { display: none; gap: 8px; align-items: center; }
+        body.admin-mode .admin-controls { display: flex; }
+        
+        .btn-action { 
+            background: rgba(244, 63, 94, 0.1); 
+            border: 1px solid rgba(244, 63, 94, 0.3); 
+            color: #f43f5e;
+            cursor: pointer; 
+            font-size: 14px; 
+            padding: 8px 12px; 
+            border-radius: 10px;
+            transition: all var(--transition-fast);
+        }
+        .btn-action:hover { background: #f43f5e; color: white; }
+
+        .btn-add-global {
+            display: none;
+            background: rgba(0, 229, 255, 0.02);
+            border: 2px dashed rgba(0, 229, 255, 0.35);
+            color: var(--accent-blue);
+            padding: 16px;
+            border-radius: 18px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+            max-width: 500px;
+            transition: all var(--transition-fast);
+        }
+        .btn-add-global:hover { background: rgba(0, 229, 255, 0.06); border-color: var(--accent-blue); box-shadow: 0 0 15px var(--accent-glow); }
+        body.admin-mode .btn-add-global { display: block; }
+
+        .admin-panel {
+            display: none;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1.5px solid rgba(0, 229, 255, 0.3);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 25px;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        body.admin-mode .admin-panel { display: flex; }
+        
+        .admin-panel input[type="number"] {
+            background: #090d16;
+            border: 1px solid #1e293b;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 12px;
+            width: 75px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .admin-panel button {
+            background: var(--accent-blue);
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow var(--transition-fast);
+        }
+        .admin-panel button:active { transform: scale(0.96); }
+        .admin-panel button:hover { box-shadow: 0 0 15px var(--accent-glow); }
+
+        /* Сітка турніру */
+        .bracket {
+            display: flex;
+            gap: 50px;
+            width: 100%;
+            padding: 20px 10px;
+            overflow-x: auto;
+            justify-content: flex-start;
+            align-items: center;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-blue) rgba(255,255,255,0.02);
+        }
+        .round { display: flex; flex-direction: column; justify-content: space-around; gap: 35px; min-height: 560px; min-width: 240px; }
+        
+        .matchup { 
+            background: var(--card-bg); 
+            border: 1px solid rgba(255, 255, 255, 0.06); 
+            border-radius: 18px; 
+            width: 240px; 
+            padding: 14px; 
+            box-sizing: border-box;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+        }
+        .match-title { font-size: 11px; color: #64748b; text-align: center; margin-bottom: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1.5px; }
+        
+        .fighter { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            background: var(--fighter-bg); 
+            padding: 12px 14px; 
+            margin: 8px 0; 
+            border-radius: 12px; 
+            border: 1.5px solid transparent; 
+            transition: all var(--transition-fast);
+        }
+        .fighter-name-wrapper {
+            cursor: pointer;
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .winner { border-color: var(--winner-green) !important; background: rgba(0, 230, 118, 0.06) !important; box-shadow: 0 0 10px rgba(0, 230, 118, 0.15); }
+        .winner .fighter-name-wrapper { color: var(--winner-green) !important; font-weight: 700; }
+        .loser { border-color: var(--loser-red) !important; opacity: 0.35; background: rgba(255, 23, 68, 0.02) !important; }
+        .loser .fighter-name-wrapper { color: var(--loser-red) !important; text-decoration: line-through; }
+
+        .btn-crown { background: none; border: none; cursor: pointer; font-size: 17px; padding: 2px; filter: grayscale(1) opacity(0.4); transition: all var(--transition-fast); }
+        .fighter:hover .btn-crown { filter: grayscale(1) opacity(0.9); }
+        .winner .btn-crown { filter: grayscale(0) opacity(1) !important; transform: scale(1.15); }
+        body:not(.admin-mode) .btn-crown { pointer-events: none; }
+
+        .btn-back { background: none; border: 2px solid #1e293b; color: #64748b; padding: 14px 28px; border-radius: 14px; cursor: pointer; margin-top: 30px; font-weight: bold; transition: all var(--transition-fast); }
+        .btn-back:hover { color: white; border-color: #475569; background: rgba(255,255,255,0.02); }
+
+        /* QoL Кнопка Оновлення */
+        .qol-refresh-container { display: flex; justify-content: flex-end; width: 100%; max-width: 500px; margin-bottom: 15px; }
+        .btn-qol-refresh { background: rgba(0, 229, 255, 0.06); border: 1px solid rgba(0, 229, 255, 0.2); color: var(--accent-blue); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all var(--transition-fast); }
+        .btn-qol-refresh:hover { background: rgba(0, 229, 255, 0.12); border-color: var(--accent-blue); box-shadow: 0 0 10px var(--accent-glow); }
+
+        /* Меню знизу */
+        .app-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(4, 6, 14, 0.85); backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.06); padding: 16px 20px; display: flex; justify-content: space-between; gap: 15px; box-sizing: border-box; z-index: 900; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
+        .footer-btn { flex: 1; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); color: var(--text-main); padding: 14px; border-radius: 14px; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all var(--transition-fast); }
+        .footer-btn:active { transform: scale(0.97); }
+        .footer-btn.donate-style { border-color: rgba(0, 229, 255, 0.3); box-shadow: 0 0 15px rgba(0, 229, 255, 0.08); color: var(--accent-blue); background: rgba(0, 229, 255, 0.02); }
+        .footer-btn.donate-style:hover { background: rgba(0, 229, 255, 0.06); border-color: var(--accent-blue); }
+
+        /* Модальні Вікна (Ефект Скла) */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(2, 3, 7, 0.7); 
+            backdrop-filter: blur(10px); 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1000; 
+            padding: 15px; 
+            box-sizing: border-box;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        .modal.show { opacity: 1; }
+        
+        .modal-content { 
+            background: rgba(13, 20, 35, 0.9); 
+            border: 1px solid rgba(0, 229, 255, 0.25); 
+            padding: 26px; 
+            border-radius: 24px; 
+            text-align: center; 
+            width: 100%; 
+            max-width: 360px; 
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(255,255,255,0.02); 
+            box-sizing: border-box;
+            transform: scale(0.92);
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(20px);
+        }
+        .modal.show .modal-content { transform: scale(1); }
+
+        .modal-content input { 
+            background: #050811; 
+            border: 1px solid rgba(255,255,255,0.08); 
+            color: white; 
+            padding: 14px; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            text-align: center; 
+            margin-bottom: 18px; 
+            width: 100%; 
+            box-sizing: border-box;
+            transition: border-color var(--transition-fast);
+        }
+        .modal-content input:focus { border-color: var(--accent-blue); outline: none; }
+
+        .chat-links-list { display: flex; flex-direction: column; gap: 12px; margin: 20px 0; }
+        .chat-link-item { background: rgba(7, 11, 20, 0.6); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 14px; color: white; text-decoration: none; font-weight: 600; display: flex; justify-content: space-between; transition: all var(--transition-fast); }
+        .chat-link-item:hover { border-color: var(--accent-blue); background: rgba(0,229,255,0.03); transform: translateX(2px); }
+        
+        .crypto-box { background: #04060c; border: 1px dashed rgba(255,255,255,0.1); padding: 14px; border-radius: 12px; font-family: monospace; font-size: 12px; color: #94a3b8; word-break: break-all; margin: 15px 0; user-select: all; }
+        .modal-btn-action { background: var(--accent-blue); color: black; border: none; padding: 14px 20px; border-radius: 12px; font-weight: bold; width: 100%; cursor: pointer; transition: all var(--transition-fast); }
+        .modal-btn-action:hover { box-shadow: 0 0 15px var(--accent-glow); }
+
+        .profile-box { text-align: left; }
+        .profile-avatar-container { display: flex; justify-content: center; margin-bottom: 18px; }
+        .profile-img { width: 115px; height: 115px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-blue); background: #111827; box-shadow: 0 0 15px var(--accent-glow); }
+        .profile-name { font-size: 22px; font-weight: bold; color: var(--accent-blue); text-align: center; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; text-shadow: 0 0 10px var(--accent-glow); }
+        .profile-grid { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+        .profile-item { display: flex; justify-content: space-between; background: rgba(7, 11, 20, 0.6); border: 1px solid rgba(255,255,255,0.03); padding: 12px 14px; border-radius: 12px; align-items: center; }
+        .profile-item label { color: #94a3b8; font-weight: 500; }
+        .profile-item span { font-weight: 700; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header"><h1>Підборідочні бої</h1></div>
-    
-    <div class="tab-bar">
-        <div class="tab active" onclick="switchTab('list')">Турніри</div>
-        <div class="tab" onclick="switchTab('lead')">Лідерборд</div>
+    <!-- ВХІД В АДМІНКУ -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:var(--accent-blue);">Вхід в Адмінку</h3>
+            <input type="password" id="passInput" placeholder="Введіть пароль">
+            <button onclick="checkAdminPassword()" class="modal-btn-action">Увійти</button>
+            <button onclick="closeModal('passwordModal')" style="background:none; border:none; color:#64748b; margin-top:14px; cursor:pointer; font-weight:bold;">Скасувати</button>
+        </div>
     </div>
 
-    <button class="btn-refresh" onclick="loadData()">🔄 Оновити дані</button>
-    <div id="content"></div>
-</div>
+    <!-- ЧАТИ -->
+    <div id="chatsModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:var(--accent-blue); text-transform:uppercase; letter-spacing:1px;">💬 Наші Ресурси</h3>
+            <div class="chat-links-list">
+                <a href="https://t.me/pidboridok" target="_blank" class="chat-link-item"><span>🚀 Основний чат</span> ➔</a>
+                <a href="https://t.me/geyboilink" target="_blank" class="chat-link-item"><span>🔥 Додатковий чат</span> ➔</a>
+                <a href="https://t.me/pidboridokbot" target="_blank" class="chat-link-item"><span>🤖 Наш Telegram Бот</span> ➔</a>
+            </div>
+            <button onclick="closeModal('chatsModal')" class="modal-btn-action" style="background:rgba(255,255,255,0.05); color:white; border: 1px solid rgba(255,255,255,0.1);">Закрити</button>
+        </div>
+    </div>
 
-<script>
-    const SPREADSHEET_ID = '1qsUMSrSEvVQqx5gc8aPbtJXAgI5ciGK1zQwyB8sviH8';
-    const CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
+    <!-- ДОНАТ -->
+    <div id="donateModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0; color:var(--accent-blue); text-transform:uppercase; letter-spacing:1px;">💎 Донат</h3>
+            <p style="font-size:13px; color:#94a3b8;">Надсилайте TON на наш офіційний гаманець:</p>
+            <div class="crypto-box" id="tonWalletAddress">UQCe4YHyEDgCwm3o2WntvgSUjkyYd_7tigG9S3IlwMnSZuX_</div>
+            <button onclick="copyWalletAddress()" class="modal-btn-action" id="copyBtn">📋 Скопіювати адресу</button>
+            <button onclick="closeModal('donateModal')" style="background:none; border:none; color:#64748b; margin-top:14px; cursor:pointer; font-weight:bold;">Закрити</button>
+        </div>
+    </div>
 
-    // QoL: Збереження в локальний кеш
-    function loadData() {
-        fetch(CSV_URL)
-            .then(res => res.text())
-            .then(text => {
-                const rows = text.split('\n').slice(1); // пропуск заголовка
-                const data = rows.map(r => r.split(',')).filter(r => r[1]);
-                localStorage.setItem('cached_fighters', JSON.stringify(data));
-                render(data);
-            })
-            .catch(() => {
-                const cached = JSON.parse(localStorage.getItem('cached_fighters'));
-                if(cached) render(cached);
-            });
-    }
-
-    function render(data) {
-        const container = document.getElementById('content');
-        container.innerHTML = data.map((f, i) => `
-            <div class="card animate" style="animation-delay: ${i * 0.05}s">
-                <div style="display:flex; justify-content:space-between">
-                    <strong>${f[1].replace(/"/g, '')}</strong>
-                    <span class="kd-tag">KD: ${ (f[2]/(f[3]||1)).toFixed(2) }</span>
+    <!-- ПРОФІЛЬ БІЙЦЯ -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; padding: 24px;">
+            <div class="profile-box">
+                <div class="profile-avatar-container">
+                    <img src="" id="profViewImg" class="profile-img" alt="avatar">
                 </div>
-                <div style="margin-top:10px; font-size:0.9em; color:#aaa">
-                    Перемог: <span style="color:var(--green)">${f[2]}</span> | 
-                    Поразок: <span style="color:var(--red)">${f[3]}</span>
+                <div id="profNameTitle" class="profile-name">Ім'я Бійця</div>
+                
+                <div class="profile-grid">
+                    <div class="profile-item"><label>Розмах рук:</label><span id="lbl-arms"></span></div>
+                    <div class="profile-item"><label>Ріст:</label><span id="lbl-height"></span></div>
+                    <div class="profile-item"><label>Вага:</label><span id="lbl-weight"></span></div>
+                    <div class="profile-item"><label>Перемог:</label><span id="lbl-wins" style="color:var(--winner-green)"></span></div>
+                    <div class="profile-item"><label>Поразок:</label><span id="lbl-losses" style="color:var(--loser-red)"></span></div>
+                    <div class="profile-item"><label>Довжина підборідка:</label><span id="lbl-chin"></span></div>
                 </div>
             </div>
-        `).join('');
-    }
+            <button onclick="closeModal('profileModal')" class="modal-btn-action" style="margin-top: 20px;">Закрити</button>
+        </div>
+    </div>
 
-    function switchTab(t) {
-        document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.innerText.toLowerCase().includes(t)));
-        loadData();
-    }
+    <!-- ГОЛОВНА СТОРІНКА -->
+    <div id="main-page" class="page active">
+        <div class="header-container">
+            <h1 id="main-title">🏆 Панель Турнірів 🏆</h1>
+            <button class="admin-gear" id="mainGear" onclick="openPasswordModal()">⚙️</button>
+        </div>
 
-    loadData();
-</script>
+        <div class="tabs-container">
+            <button class="tab-btn active" id="tab-tournaments" onclick="switchTab('tournaments')">⚔️ Турніри</button>
+            <button class="tab-btn" id="tab-leaderboard" onclick="switchTab('leaderboard')">🔥 Лідерборд</button>
+        </div>
+
+        <div id="tournaments-section" class="content-list">
+            <div id="tournaments-container"></div>
+            <button class="btn-add-global" onclick="addNewTournament()">➕ Додати новий турнір</button>
+        </div>
+
+        <div id="leaderboard-section" class="content-list" style="display: none;">
+            <!-- QoL: Швидке ручне оновлення даних -->
+            <div class="qol-refresh-container">
+                <button class="btn-qol-refresh" onclick="loadFightersFromSheets(true)"><span>🔄</span> Оновити таблицю</button>
+            </div>
+            <div id="loading-text" style="text-align:center; color:var(--accent-blue); font-weight:600;">Завантаження даних...</div>
+            <div id="leaderboard-container"></div>
+        </div>
+    </div>
+
+    <!-- СТОРІНКА СІТКИ -->
+    <div id="bracket-page" class="page">
+        <div class="header-container">
+            <h1 id="active-tournament-title">Сітка боїв</h1>
+            <button class="admin-gear" id="bracketGear" onclick="openPasswordModal()">⚙️</button>
+        </div>
+
+        <div class="admin-panel">
+            <label>Кількість бійців:</label>
+            <input type="number" id="custom-size-input" min="2" max="64" value="8">
+            <button onclick="updateTournamentSize()">Згенерувати сітку</button>
+        </div>
+
+        <div class="bracket" id="bracket-grid"></div>
+        <div style="text-align: center;"><button class="btn-back" onclick="goToMainPage()">Назад до списку</button></div>
+    </div>
+
+    <footer class="app-footer">
+        <button class="footer-btn" onclick="openModal('chatsModal')">💬 Наші чати</button>
+        <button class="footer-btn donate-style" onclick="openModal('donateModal')">💎 Донат</button>
+    </footer>
+
+    <script>
+        const SPREADSHEET_ID = '1qsUMSrSEvVQqx5gc8aPbtJXAgI5ciGK1zQwyB8sviH8';
+        const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
+
+        const tg = window.Telegram.WebApp;
+        if(tg) tg.expand();
+
+        let tournamentsData = JSON.parse(localStorage.getItem('tournamentsData')) || [
+            { id: 1, title: "Тurnir #1: Перша Кров", size: 8 }
+        ];
+
+        let fightersData = []; 
+        let currentTournamentId = null;
+        let currentTab = 'tournaments';
+
+        function def(id){ return document.getElementById(id); }
+
+        function openModal(id) {
+            const m = def(id);
+            m.style.display = 'flex';
+            setTimeout(() => m.classList.add('show'), 10);
+        }
+
+        function closeModal(id) {
+            const m = def(id);
+            m.classList.remove('show');
+            setTimeout(() => m.style.style.display = 'none', 250);
+            setTimeout(() => m.style.display = 'none', 250);
+        }
+
+        function switchTab(tab) {
+            if(currentTab === tab) return;
+            currentTab = tab;
+            if (tab === 'tournaments') {
+                def('tab-tournaments').classList.add('active');
+                def('tab-leaderboard').classList.remove('active');
+                def('leaderboard-section').style.display = 'none';
+                def('tournaments-section').style.display = 'flex';
+                def('main-title').innerText = "🏆 Панель Турнірів 🏆";
+                renderTournaments();
+            } else {
+                def('tab-tournaments').classList.remove('active');
+                def('tab-leaderboard').classList.add('active');
+                def('tournaments-section').style.display = 'none';
+                def('leaderboard-section').style.display = 'flex';
+                def('main-title').innerText = "👑 Топ Бійців 👑";
+                loadFightersFromSheets(false); // Авто-завантаження (розумний кеш)
+            }
+        }
+
+        // Залізобетонний розумний парсер CSV + Кешування (QoL)
+        function loadFightersFromSheets(forceRefresh = false) {
+            def('loading-text').style.display = 'block';
+            
+            // Спробуємо взяти з локального сховища, якщо не вимагається примусове оновлення
+            let localCache = localStorage.getItem('cached_fighters_list');
+            if (localCache && !forceRefresh) {
+                fightersData = JSON.parse(localCache);
+                renderLeaderboard();
+                return;
+            }
+
+            def('loading-text').innerText = "Оновлення списку бійців з таблиці...";
+
+            fetch(SHEET_URL)
+                .then(res => res.text())
+                .then(text => {
+                    if (!text || text.trim() === "") throw new Error("Помилка файлу");
+
+                    let firstLine = text.split('\n')[0];
+                    let delimiter = ',';
+                    if (firstLine.includes(';') && !firstLine.includes(',')) {
+                        delimiter = ';';
+                    }
+
+                    let lines = text.split('\n');
+                    fightersData = [];
+
+                    for (let i = 1; i < lines.length; i++) {
+                        let line = lines[i].trim();
+                        if (!line) continue;
+
+                        let row = line.split(delimiter).map(col => col.replace(/^"|"$/g, '').trim());
+                        let name = row[1];
+                        
+                        // Захист від системного коду або пустот
+                        if (!name || name === "" || name.includes('function') || name.includes('=') || name.length > 30) {
+                            continue;
+                        }
+
+                        let wins = parseInt(row[2]) || 0;
+                        let losses = parseInt(row[3]) || 0;
+                        let arms = row[4] || "—";
+                        let height = row[5] || "—";
+                        let weight = row[6] || "—";
+                        let chin = row[7] || "—";
+
+                        let effectiveLosses = losses === 0 ? 1 : losses;
+                        let kd = (wins / effectiveLosses).toFixed(2);
+
+                        fightersData.push({
+                            id: i, name: name, wins: wins, losses: losses,
+                            arms: arms, height: height, weight: weight, chin: chin,
+                            kd: parseFloat(kd)
+                        });
+                    }
+
+                    fightersData.sort((a, b) => b.kd - a.kd);
+                    localStorage.setItem('cached_fighters_list', JSON.stringify(fightersData)); // Збереження в кеш
+                    renderLeaderboard();
+                })
+                .catch(err => {
+                    // Якщо інет лежить, а кеш є - показуємо кеш
+                    if (localCache) {
+                        fightersData = JSON.parse(localCache);
+                        renderLeaderboard();
+                        alert("Мережа недоступна. Завантажено збережені раніше дані бійців.");
+                    } else {
+                        def('loading-text').innerText = "Помилка мережі. Перевірте з'єднання.";
+                    }
+                    console.error(err);
+                });
+        }
+
+        function renderLeaderboard() {
+            def('loading-text').style.display = 'none';
+            const container = def('leaderboard-container');
+            container.innerHTML = "";
+
+            if(fightersData.length === 0) {
+                container.innerHTML = "<div style='text-align:center; color:#64748b; padding: 20px;'>Дані відсутні...</div>";
+                return;
+            }
+
+            fightersData.forEach((f, index) => {
+                let rankClass = "";
+                if (index === 0) rankClass = "rank-1";
+                if (index === 1) rankClass = "rank-2";
+                if (index === 2) rankClass = "rank-3";
+
+                let av = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>";
+
+                let card = document.createElement('div');
+                card.className = 'leader-card animate-fade-in';
+                card.style.animationDelay = `${index * 0.04}s`; // Каскадна плавна поява
+                card.onclick = () => openFighterProfile(f.name);
+
+                card.innerHTML = `
+                    <div class="leader-row">
+                        <div class="leader-clickable">
+                            <img src="${av}" class="mini-avatar">
+                            <span class="leader-rank ${rankClass}">#${index + 1}</span>
+                            <span class="leader-name">${f.name}</span>
+                        </div>
+                    </div>
+                    <div class="leader-row" style="margin-top: 4px;">
+                        <div class="leader-stats">
+                            <span>В: <strong style="color:var(--winner-green)">${f.wins}</strong></span>
+                            <span>П: <strong style="color:var(--loser-red)">${f.losses}</strong></span>
+                            <span class="kd-badge">KD: ${f.kd}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function openFighterProfile(name) {
+            let f = fightersData.find(fighter => fighter.name === name);
+            if (!f) {
+                def('profNameTitle').innerText = name;
+                def('lbl-arms').innerText = "—"; def('lbl-height').innerText = "—";
+                def('lbl-weight').innerText = "—"; def('lbl-wins').innerText = "0";
+                def('lbl-losses').innerText = "0"; def('lbl-chin').innerText = "—";
+            } else {
+                def('profNameTitle').innerText = f.name;
+                def('lbl-arms').innerText = f.arms;
+                def('lbl-height').innerText = f.height;
+                def('lbl-weight').innerText = f.weight;
+                def('lbl-wins').innerText = f.wins;
+                def('lbl-losses').innerText = f.losses;
+                def('lbl-chin').innerText = f.chin;
+            }
+
+            def('profViewImg').src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>";
+            openModal('profileModal');
+        }
+
+        function openPasswordModal() {
+            if (document.body.classList.contains('admin-mode')) {
+                document.body.classList.remove('admin-mode');
+                def('mainGear').classList.remove('active');
+                def('bracketGear').classList.remove('active');
+                renderTournaments();
+                if(currentTournamentId) buildBracket();
+                return;
+            }
+            openModal('passwordModal');
+            def('passInput').focus();
+        }
+
+        function checkAdminPassword() {
+            if (def('passInput').value === "606060") {
+                document.body.classList.add('admin-mode');
+                def('mainGear').classList.add('active');
+                def('bracketGear').classList.add('active');
+                closeModal('passwordModal');
+                def('passInput').value = '';
+                renderTournaments();
+                if(currentTournamentId) buildBracket();
+            } else {
+                alert("Невірний пароль!");
+            }
+        }
+
+        function renderTournaments() {
+            const container = def('tournaments-container');
+            container.innerHTML = "";
+            tournamentsData.forEach((t, idx) => {
+                let card = document.createElement('div');
+                card.className = 'tournament-card animate-fade-in';
+                card.style.animationDelay = `${idx * 0.05}s`;
+                card.innerHTML = `
+                    <div class="tournament-info" onclick="startTournament(${t.id}, '${t.title}', ${t.size})">
+                        <span>${t.title} (Гравців: ${t.size})</span>
+                    </div>
+                    <div class="admin-controls">
+                        <button class="btn-action" onclick="deleteTournament(${t.id})">❌ Видалити</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function addNewTournament() {
+            let title = prompt("Введіть назву турніру:");
+            if (!title) return;
+            let size = parseInt(prompt("Кількість бійців (2, 4, 8, 16, 32, 64):", "8"));
+            if (![2,4,8,16,32,64].includes(size)) {
+                alert("Невірна кількість бійців!");
+                return;
+            }
+            let newId = tournamentsData.length > 0 ? Math.max(...tournamentsData.map(t => t.id)) + 1 : 1;
+            tournamentsData.push({ id: newId, title: title, size: size });
+            localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
+            renderTournaments();
+        }
+
+        function deleteTournament(id) {
+            if (confirm("Видалити цей турнір?")) {
+                tournamentsData = tournamentsData.filter(t => t.id !== id);
+                localStorage.removeItem(`bracket_input_t_${id}`);
+                localStorage.removeItem(`bracket_winners_t_${id}`);
+                localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
+                renderTournaments();
+            }
+        }
+
+        function startTournament(id, title, size) {
+            currentTournamentId = id;
+            def('main-page').classList.remove('active');
+            def('bracket-page').classList.add('active');
+            def('active-tournament-title').innerText = title;
+            def('custom-size-input').value = size;
+            buildBracket();
+        }
+
+        function goToMainPage() {
+            def('bracket-page').classList.remove('active');
+            def('main-page').classList.add('active');
+            currentTournamentId = null;
+            renderTournaments();
+        }
+
+        function updateTournamentSize() {
+            let size = parseInt(def('custom-size-input').value);
+            if (![2,4,8,16,32,64].includes(size)) {
+                alert("Оберіть: 2, 4, 8, 16, 32 чи 64 бійців!");
+                return;
+            }
+            let t = tournamentsData.find(t => t.id === currentTournamentId);
+            if(t) {
+                t.size = size;
+                localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
+            }
+            localStorage.removeItem(`bracket_input_t_${currentTournamentId}`);
+            localStorage.removeItem(`bracket_winners_t_${currentTournamentId}`);
+            buildBracket();
+        }
+
+        function buildBracket() {
+            const size = parseInt(def('custom-size-input').value);
+            const container = def('bracket-grid');
+            container.innerHTML = "";
+
+            let roundsCount = Math.log2(size);
+            let savedInputs = JSON.parse(localStorage.getItem(`bracket_input_t_${currentTournamentId}`)) || {};
+            let savedWinners = JSON.parse(localStorage.getItem(`bracket_winners_t_${currentTournamentId}`)) || {};
+
+            let matchesInRound = size / 2;
+
+            for (let r = 0; r < roundsCount; r++) {
+                let roundEl = document.createElement('div');
+                roundEl.className = 'round';
+                let roundTitle = (r === roundsCount - 1) ? "Фінал" : `Раунд ${r + 1}`;
+
+                for (let m = 0; m < matchesInRound; m++) {
+                    let matchupEl = document.createElement('div');
+                    matchupEl.className = 'matchup animate-fade-in';
+                    matchupEl.style.animationDelay = `${m * 0.03}s`;
+                    
+                    let f1_id = `t_${currentTournamentId}_r_${r}_m_${m}_f_1`;
+                    let f2_id = `t_${currentTournamentId}_r_${r}_m_${m}_f_2`;
+                    let next_f_node = (m % 2 === 0) ? 1 : 2;
+                    let next_m_index = Math.floor(m / 2);
+                    let next_id = `t_${currentTournamentId}_r_${r+1}_m_${next_m_index}_f_${next_f_node}`;
+
+                    let f1_name = savedInputs[f1_id] || (r === 0 ? `Боєць ${m * 2 + 1}` : "?");
+                    let f2_name = savedInputs[f2_id] || (r === 0 ? `Боєць ${m * 2 + 2}` : "?");
+
+                    let f1_status = savedWinners[f1_id] || "";
+                    let f2_status = savedWinners[f2_id] || "";
+
+                    matchupEl.innerHTML = `
+                        <div class="match-title">${roundTitle} — Бій ${m + 1}</div>
+                        <div class="fighter ${f1_status}" id="${f1_id}">
+                            <div class="fighter-name-wrapper" onclick="handleFighterClick(this)">${f1_name}</div>
+                            <button class="btn-crown" onclick="setWinner('${f1_id}', '${f2_id}', '${next_id}')">👑</button>
+                        </div>
+                        <div class="fighter ${f2_status}" id="${f2_id}">
+                            <div class="fighter-name-wrapper" onclick="handleFighterClick(this)">${f2_name}</div>
+                            <button class="btn-crown" onclick="setWinner('${f2_id}', '${f1_id}', '${next_id}')">👑</button>
+                        </div>
+                    `;
+                    roundEl.appendChild(matchupEl);
+                }
+                container.appendChild(roundEl);
+                matchesInRound /= 2;
+            }
+        }
+
+        function handleFighterClick(element) {
+            let currentName = element.innerText.trim();
+            if (currentName === "?" || currentName === "— ПРОПУСКАЄ РАУНД —") return;
+
+            if (document.body.classList.contains('admin-mode')) {
+                let newName = prompt("Змінити ім'я бійця:", currentName);
+                if (newName && newName.trim() !== "") {
+                    element.innerText = newName.trim();
+                    saveBracketInputs();
+                }
+            } else {
+                openFighterProfile(currentName);
+            }
+        }
+
+        function setWinner(winnerId, loserId, nextId) {
+            const winEl = def(winnerId); const loseEl = def(loserId);
+
+            winEl.classList.remove('loser'); winEl.classList.add('winner');
+            loseEl.classList.remove('winner'); loseEl.classList.add('loser');
+
+            const winnerName = winEl.querySelector('.fighter-name-wrapper').innerText;
+            const nextEl = def(nextId);
+            if (nextEl) nextEl.querySelector('.fighter-name-wrapper').innerText = winnerName;
+            
+            saveBracketInputs();
+            saveBracketWinners();
+        }
+
+        function saveBracketInputs() {
+            let inputs = {};
+            document.querySelectorAll(`#bracket-grid .fighter-name-wrapper`).forEach(el => {
+                inputs[el.parentElement.id] = el.innerText.trim();
+            });
+            localStorage.setItem(`bracket_input_t_${currentTournamentId}`, JSON.stringify(inputs));
+        }
+
+        function saveBracketWinners() {
+            let winners = {};
+            document.querySelectorAll(`#bracket-grid .fighter`).forEach(el => {
+                if (el.classList.contains('winner')) winners[el.id] = "winner";
+                if (el.classList.contains('loser')) winners[el.id] = "loser";
+            });
+            localStorage.setItem(`bracket_winners_t_${currentTournamentId}`, JSON.stringify(winners));
+        }
+
+        function copyWalletAddress() {
+            const address = def('tonWalletAddress').innerText;
+            navigator.clipboard.writeText(address).then(() => {
+                def('copyBtn').innerText = "✅ Скопіювано!";
+                setTimeout(() => { def('copyBtn').innerText = "📋 Скопіювати адресу"; }, 2000);
+            });
+        }
+
+        renderTournaments();
+    </script>
 </body>
 </html>
