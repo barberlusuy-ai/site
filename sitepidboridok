@@ -78,7 +78,7 @@
         }
 
         /* Стильні та чутливі кнопки */
-        button, .tab-btn, .chat-link-item, .tournament-card, .leader-clickable {
+        button, .tab-btn, .chat-link-item, .tournament-card, .leader-clickable, .reload-btn {
             touch-action: manipulation; /* Прибирає 300мс затримки на мобільних */
         }
 
@@ -93,6 +93,26 @@
         }
         .admin-gear:hover { color: var(--accent-blue); transform: rotate(90deg); }
         .admin-gear.active { color: var(--winner-green); text-shadow: 0 0 10px rgba(0, 230, 118, 0.5); transform: rotate(180deg); }
+
+        /* КНОПКА ОНОВЛЕННЯ СТОРІНКИ */
+        .reload-btn {
+            background: rgba(20, 27, 41, 0.6);
+            border: 1.5px solid #1e293b;
+            color: var(--text-main);
+            font-size: 18px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+        }
+        .reload-btn:active {
+            transform: scale(0.85);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
 
         .tabs-container {
             display: flex;
@@ -428,7 +448,6 @@
 </head>
 <body>
 
-    <!-- ВХІД В АДМІНКУ -->
     <div id="passwordModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top:0; color:var(--accent-blue);">Вхід в Адмінку</h3>
@@ -438,7 +457,6 @@
         </div>
     </div>
 
-    <!-- РЕСУРСИ -->
     <div id="chatsModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top:0; color:var(--accent-blue); text-transform:uppercase;">💬 Наші Ресурси</h3>
@@ -451,7 +469,6 @@
         </div>
     </div>
 
-    <!-- ДОНАТ -->
     <div id="donateModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top:0; color:var(--accent-blue); text-transform:uppercase;">💎 Донат</h3>
@@ -462,7 +479,6 @@
         </div>
     </div>
 
-    <!-- ПРОФІЛЬ БІЙЦЯ -->
     <div id="profileModal" class="modal">
         <div class="modal-content" style="max-width: 400px; padding: 22px;">
             <div class="profile-box">
@@ -521,9 +537,10 @@
         </div>
     </div>
 
-    <!-- ГОЛОВНА СТОРІНКА -->
     <div id="main-page" class="page active">
         <div class="header-container">
+            <button class="reload-btn" onclick="window.location.reload(true)">🔄</button>
+            
             <h1 id="main-title">🏆 Панель Турнірів 🏆</h1>
             <button class="admin-gear" id="mainGear" onclick="openPasswordModal()">⚙️</button>
         </div>
@@ -544,9 +561,10 @@
         </div>
     </div>
 
-    <!-- СТОРІНКА СІТКИ -->
     <div id="bracket-page" class="page">
         <div class="header-container">
+            <button class="reload-btn" onclick="window.location.reload(true)">🔄</button>
+            
             <h1 id="active-tournament-title">Сітка боїв</h1>
             <button class="admin-gear" id="bracketGear" onclick="openPasswordModal()">⚙️</button>
         </div>
@@ -561,7 +579,6 @@
         <button class="btn-back" onclick="goToMainPage()">Назад до списку</button>
     </div>
 
-    <!-- ФУТЕР -->
     <footer class="app-footer">
         <button class="footer-btn" onclick="openModal('chatsModal')">💬 Наші чати</button>
         <button class="footer-btn donate-style" onclick="openModal('donateModal')">💎 Донат</button>
@@ -622,8 +639,8 @@
                 setTimeout(() => {
                     toPage.style.opacity = '1';
                     toPage.style.transform = 'translateY(0)';
-                }, 20);
-            }, 200);
+                }, 200);
+            }, 20);
         }
 
         function switchTab(tab) {
