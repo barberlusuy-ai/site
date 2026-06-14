@@ -32,7 +32,7 @@
             min-height: 100vh;
             box-sizing: border-box;
             overflow-x: hidden;
-            -webkit-tap-highlight-color: transparent; /* Прибирає сірий спалах на iOS */
+            -webkit-tap-highlight-color: transparent;
         }
 
         @keyframes liveGradient {
@@ -41,7 +41,6 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Плавна поява сторінок */
         .page {
             display: none;
             width: 100%;
@@ -77,9 +76,8 @@
             text-align: center;
         }
 
-        /* Стильні та чутливі кнопки */
-        button, .tab-btn, .chat-link-item, .tournament-card, .leader-clickable, .reload-btn {
-            touch-action: manipulation; /* Прибирає 300мс затримки на мобільних */
+        button, .tab-btn, .chat-link-item, .tournament-card, .leader-clickable {
+            touch-action: manipulation;
         }
 
         .admin-gear {
@@ -93,26 +91,6 @@
         }
         .admin-gear:hover { color: var(--accent-blue); transform: rotate(90deg); }
         .admin-gear.active { color: var(--winner-green); text-shadow: 0 0 10px rgba(0, 230, 118, 0.5); transform: rotate(180deg); }
-
-        /* КНОПКА ОНОВЛЕННЯ СТОРІНКИ */
-        .reload-btn {
-            background: rgba(20, 27, 41, 0.6);
-            border: 1.5px solid #1e293b;
-            color: var(--text-main);
-            font-size: 18px;
-            padding: 6px 10px;
-            border-radius: 10px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all var(--transition-fast);
-        }
-        .reload-btn:active {
-            transform: scale(0.85);
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 10px var(--accent-glow);
-        }
 
         .tabs-container {
             display: flex;
@@ -152,7 +130,6 @@
             max-width: 500px;
         }
 
-        /* Картки з мікро-анімацією натискання */
         .tournament-card {
             background: var(--card-bg);
             border: 1.5px solid #1e293b;
@@ -173,7 +150,6 @@
         }
         .tournament-info { cursor: pointer; flex-grow: 1; }
 
-        /* Стильний Лідерборд */
         .leader-card {
             background: var(--card-bg);
             border: 1.5px solid #1e293b;
@@ -304,7 +280,6 @@
         }
         .admin-panel button:active { transform: scale(0.95); }
 
-        /* Турнірна Сітка */
         .bracket {
             display: flex;
             gap: 40px;
@@ -360,13 +335,11 @@
         .btn-back { background: none; border: 2px solid #334155; color: #64748b; padding: 12px 24px; border-radius: 12px; cursor: pointer; margin-top: 25px; font-weight: bold; transition: all var(--transition-fast); }
         .btn-back:active { border-color: var(--accent-blue); color: var(--accent-blue); transform: scale(0.96); }
 
-        /* Нижнє Меню */
         .app-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(6, 9, 19, 0.88); backdrop-filter: blur(16px); border-top: 1.5px solid rgba(255, 255, 255, 0.05); padding: 14px 20px; display: flex; justify-content: space-between; gap: 15px; box-sizing: border-box; z-index: 900; }
         .footer-btn { flex: 1; background: var(--card-bg); border: 1.5px solid #1e293b; color: var(--text-main); padding: 14px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.1s ease, border-color var(--transition-fast); }
         .footer-btn:active { transform: scale(0.95); border-color: var(--accent-blue); }
         .footer-btn.donate-style { border-color: rgba(0, 229, 255, 0.3); box-shadow: 0 0 15px rgba(0, 229, 255, 0.1); color: var(--accent-blue); }
 
-        /* Модальні Вікна з анімацією виліту */
         .modal { 
             display: none; 
             position: fixed; 
@@ -423,7 +396,6 @@
         .modal-btn-action { background: var(--accent-blue); color: black; border: none; padding: 12px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 15px; width: 100%; box-sizing: border-box; transition: transform 0.1s; }
         .modal-btn-action:active { transform: scale(0.96); }
 
-        /* Профіль Бійця */
         .profile-box { text-align: left; }
         .profile-avatar-container { display: flex; justify-content: center; margin-bottom: 18px; position: relative; }
         .profile-img { width: 115px; height: 115px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-blue); background: #1e293b; box-shadow: 0 0 20px var(--accent-glow); }
@@ -461,9 +433,9 @@
         <div class="modal-content">
             <h3 style="margin-top:0; color:var(--accent-blue); text-transform:uppercase;">💬 Наші Ресурси</h3>
             <div class="chat-links-list">
-                <a href="https://t.me/pidboridok" target="_blank" class="chat-link-item"><span>🚀 Основний чат</span> ➔</a>
-                <a href="https://t.me/geyboilink" target="_blank" class="chat-link-item"><span>🔥 Додатковий чат</span> ➔</a>
-                <a href="https://t.me/pidboridokbot" target="_blank" class="chat-link-item"><span>🤖 Наш Telegram Бот</span> ➔</a>
+                <a href="https://t.me/+nnmnG7YHRYs5ODY6" target="_blank" class="chat-link-item"><span>🚀 Основний чат</span> ➔</a>
+                <a href="https://t.me/+V9j3UpdyYKdkMDcy" target="_blank" class="chat-link-item"><span>🔥 Аналітичний чат</span> ➔</a>
+                <a href="https://orange-nady-76.tiiny.site" target="_blank" class="chat-link-item"><span>🌐 Наш Сайт</span> ➔</a>
             </div>
             <button onclick="closeModal('chatsModal')" class="modal-btn-action" style="background:#2c3e50; color:white;">Закрити</button>
         </div>
@@ -539,8 +511,6 @@
 
     <div id="main-page" class="page active">
         <div class="header-container">
-            <button class="reload-btn" onclick="window.location.reload(true)">🔄</button>
-            
             <h1 id="main-title">🏆 Панель Турнірів 🏆</h1>
             <button class="admin-gear" id="mainGear" onclick="openPasswordModal()">⚙️</button>
         </div>
@@ -563,8 +533,6 @@
 
     <div id="bracket-page" class="page">
         <div class="header-container">
-            <button class="reload-btn" onclick="window.location.reload(true)">🔄</button>
-            
             <h1 id="active-tournament-title">Сітка боїв</h1>
             <button class="admin-gear" id="bracketGear" onclick="openPasswordModal()">⚙️</button>
         </div>
@@ -588,6 +556,9 @@
         const tg = window.Telegram.WebApp;
         if(tg) tg.expand();
 
+        // Твоя Google Таблиця зв'язана автоматично!
+        const SPREADSHEET_ID = '1qsUMSrSEvVQqx5gc8aPbtJXAgI5ciGK1zQwyB8sviH8';
+
         function loadData(key, defaultData) {
             const data = localStorage.getItem(key);
             return data ? JSON.parse(data) : defaultData;
@@ -599,10 +570,55 @@
             { id: 2, title: "Турнір #2: Битва Чинців", size: 5 }
         ]);
 
+        // Початкові дані на випадок, якщо інтернет-запит не спрацює
         let fightersData = loadData('fightersData', [
-            { id: 1, name: "Хоронджук", wins: 0, losses: 0, arms: "64 см", height: "176 см", weight: "72 кг", chin: "0 см", awards: "Немає", avatar: "" },
-            { id: 2, name: "Чин-Хан", wins: 3, losses: 0, arms: "68 см", height: "180 см", weight: "78 кг", chin: "5 см", awards: "Чемпіон Маю", avatar: "" }
+            { id: 1, name: "Харанжук", wins: 0, losses: 1, arms: "64 см", height: "176 см", weight: "72 кг", chin: "0 см", awards: "Немає", avatar: "" },
+            { id: 2, name: "Діма", wins: 2, losses: 0, arms: "85 см", height: "191 см", weight: "66 кг", chin: "5.6 см", awards: "Немає", avatar: "" }
         ]);
+
+        // Функція для автоматичного завантаження даних з Google Sheets
+        async function fetchFightersFromSheets() {
+            try {
+                const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+                const response = await fetch(url);
+                const text = await response.text();
+                const json = JSON.parse(text.substr(47).slice(0, -2));
+                const rows = json.table.rows;
+                
+                let newFighters = [];
+                rows.forEach((row, index) => {
+                    if (index === 0) return; // Пропускаємо шапку таблиці
+                    
+                    const id = row.c[0] ? row.c[0].v : index;
+                    const name = row.c[1] ? String(row.c[1].v).trim() : "";
+                    const wins = row.c[2] ? parseInt(row.c[2].v) || 0 : 0;
+                    const losses = row.c[3] ? parseInt(row.c[3].v) || 0 : 0;
+                    const arms = row.c[4] ? String(row.c[4].v) : "0 см";
+                    const height = row.c[5] ? String(row.c[5].v) : "0 см";
+                    const weight = row.c[6] ? String(row.c[6].v) : "0 кг";
+                    const chin = row.c[7] ? String(row.c[7].v) : "0 см";
+                    
+                    if (name) {
+                        newFighters.push({
+                            id: id, name: name, wins: wins, losses: losses,
+                            arms: arms, height: height, weight: weight, chin: chin,
+                            awards: "Немає", avatar: ""
+                        });
+                    }
+                });
+                
+                if (newFighters.length > 0) {
+                    fightersData = newFighters;
+                    saveData('fightersData', fightersData);
+                    if (currentTab === 'leaderboard') renderLeaderboard();
+                }
+            } catch (error) {
+                console.log("Помилка завантаження з Google Таблиць, беру локальні дані", error);
+            }
+        }
+
+        // Завантажуємо дані при старті програми
+        fetchFightersFromSheets();
 
         let currentTournamentId = null;
         let currentTab = 'tournaments';
@@ -610,28 +626,23 @@
 
         function def(id){ return document.getElementById(id); }
 
-        // Плавне відкриття модалок
         function openModal(id) {
             const m = def(id);
             m.style.display = 'flex';
             setTimeout(() => m.classList.add('show'), 10);
         }
 
-        // Плавне закриття модалок
         function closeModal(id) {
             const m = def(id);
             m.classList.remove('show');
             setTimeout(() => m.style.display = 'none', 250);
         }
 
-        // Плавне перемикання вкладок/сторінок
         function switchPage(fromId, toId, callback) {
             const fromPage = def(fromId);
             const toPage = def(toId);
-            
             fromPage.style.opacity = '0';
             fromPage.style.transform = 'translateY(10px)';
-            
             setTimeout(() => {
                 fromPage.classList.remove('active');
                 if(callback) callback();
@@ -639,17 +650,15 @@
                 setTimeout(() => {
                     toPage.style.opacity = '1';
                     toPage.style.transform = 'translateY(0)';
-                }, 200);
-            }, 20);
+                }, 20);
+            }, 200);
         }
 
         function switchTab(tab) {
             if(currentTab === tab) return;
             currentTab = tab;
-            
             const tSec = def('tournaments-section');
             const lSec = def('leaderboard-section');
-            
             if (tab === 'tournaments') {
                 def('tab-tournaments').classList.add('active');
                 def('tab-leaderboard').classList.remove('active');
@@ -662,7 +671,7 @@
                 tSec.style.display = 'none';
                 lSec.style.display = 'flex';
                 def('main-title').innerText = "👑 Топ Бійців 👑";
-                renderLeaderboard();
+                fetchFightersFromSheets().then(() => renderLeaderboard());
             }
         }
 
@@ -708,7 +717,6 @@
             });
         }
 
-        /* ТУРНІРИ */
         function renderTournaments() {
             const container = def('tournaments-container');
             container.innerHTML = "";
@@ -752,7 +760,6 @@
             }
         }
 
-        /* ЛІДЕРБОРД */
         function renderLeaderboard() {
             const container = def('leaderboard-container');
             container.innerHTML = "";
@@ -809,7 +816,7 @@
             let name = prompt("Введіть ім'я нового бійця:");
             if (name) {
                 let exists = fightersData.find(f => f.name.toLowerCase() === name.toLowerCase());
-                if(exists) { alert("Боєць з таким іменем вже є в Лідерборді!"); return; }
+                if(exists) { alert("Боєць з таким іменем вже є!"); return; }
                 
                 let newId = fightersData.length ? Math.max(...fightersData.map(f => f.id)) + 1 : 1;
                 fightersData.push({ id: newId, name: name, wins: 0, losses: 0, arms: "0 см", height: "0 см", weight: "0 кг", chin: "0 см", awards: "Немає", avatar: "" });
@@ -836,7 +843,6 @@
             }
         }
 
-        /* МОДАЛКА ПРОФІЛЮ */
         function openFighterProfileByName(name) {
             let fighter = fightersData.find(f => f.name.trim().toLowerCase() === name.trim().toLowerCase());
             if(!fighter) {
@@ -879,11 +885,8 @@
         function handleAvatarUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
-            reader.onload = function(e) {
-                def('profViewImg').src = e.target.result;
-            };
+            reader.onload = function(e) { def('profViewImg').src = e.target.result; };
             reader.readAsDataURL(file);
         }
 
@@ -892,7 +895,6 @@
                 closeModal('profileModal');
                 return;
             }
-
             let fighter = fightersData.find(f => f.id === activeProfileFighterId);
             if(fighter) {
                 fighter.name = def('edit-name').value.trim() || fighter.name;
@@ -907,16 +909,12 @@
                 if(def('profViewImg').src && !def('profViewImg').src.startsWith('data:image/svg+xml')) {
                     fighter.avatar = def('profViewImg').src;
                 }
-
                 saveData('fightersData', fightersData);
                 renderLeaderboard();
-                if(currentTournamentId) buildBracket();
-                
                 closeModal('profileModal');
             }
         }
 
-        /* СІТКА БОЇВ */
         function startTournament(id, title, size) {
             currentTournamentId = id;
             switchPage('main-page', 'bracket-page', () => {
@@ -948,9 +946,7 @@
             const bracketGrid = def('bracket-grid');
             const blocks = bracketGrid.querySelectorAll('.fighter-name-wrapper');
             let savedInputs = {};
-            blocks.forEach((block, idx) => {
-                savedInputs[idx] = block.innerText;
-            });
+            blocks.forEach((block, idx) => { savedInputs[idx] = block.innerText; });
             
             let savedStatuses = {};
             const fighters = bracketGrid.querySelectorAll('.fighter');
@@ -958,7 +954,6 @@
                 if(f.classList.contains('winner')) savedStatuses[f.id] = 'winner';
                 else if(f.classList.contains('loser')) savedStatuses[f.id] = 'loser';
             });
-
             saveData(`bracket-data-t${currentTournamentId}`, { names: savedInputs, statuses: savedStatuses });
         }
 
@@ -981,7 +976,6 @@
             for (let r = 1; r <= totalRounds; r++) {
                 let roundEl = document.createElement('div');
                 roundEl.className = "round";
-
                 let roundTitle = `Раунд 1/${matchesInRound * 2}`;
                 if (matchesInRound === 2) roundTitle = "Півфінал";
                 if (matchesInRound === 1) roundTitle = "Фінал";
@@ -1053,7 +1047,6 @@
         function handleFighterClick(element) {
             let currentName = element.innerText.trim();
             if (currentName === "?" || currentName === "— ПРОПУСКАЄ РАУНД —") return;
-
             if (document.body.classList.contains('admin-mode')) {
                 let newName = prompt("Змінити ім'я бійця в сітці:", currentName);
                 if (newName && newName.trim() !== "") {
@@ -1069,14 +1062,11 @@
             const winEl = def(winnerId);
             const loseEl = def(loserId);
             if(loseEl.querySelector('.fighter-name-wrapper').innerText === "— ПРОПУСКАЄ РАУНД —") return;
-
             winEl.classList.remove('loser'); winEl.classList.add('winner');
             loseEl.classList.remove('winner'); loseEl.classList.add('loser');
-
             const winnerName = winEl.querySelector('.fighter-name-wrapper').innerText;
             const nextEl = def(nextId);
             if (nextEl) nextEl.querySelector('.fighter-name-wrapper').innerText = winnerName;
-            
             saveBracketInputs();
         }
 
