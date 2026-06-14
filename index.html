@@ -525,9 +525,8 @@
     </footer>
 
     <script>
-        const SPREADSHEET_ID = '1qsUMSrSEvVQqx5gc8aPbtJXAgI5ciGK1zQwyB8sviH8';
-        // Використовуємо надійне візуальне gviz-джерело замість звичайного редіректного CSV
-        const GOOGLE_API_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+        // Твоє надійне публічне CSV-посилання
+        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTdclAWe6-C6rOfvSOK2yxAb8PcgcKidA055DIPuWjyHualNRo2bL0M4cdW78H7iKFdTlbyoj0EUCCb/pub?output=csv";
 
         const tg = window.Telegram.WebApp;
         if(tg) tg.expand();
@@ -574,7 +573,7 @@
             }
         }
 
-        // Залізобетонний JSON-парсер без багів CORS
+        // Нова залізобетонна функція завантаження з CSV
         function loadFightersFromSheets(forceRefresh = false) {
             def('loading-text').style.display = 'block';
             
@@ -585,34 +584,28 @@
                 return;
             }
 
-            def('loading-text').innerText = "Оновлення списку бійців з таблиці...";
+            def('loading-text').innerText = "Оновлення списку бійців...";
 
-            fetch(GOOGLE_API_URL)
+            fetch(SHEET_CSV_URL)
                 .then(res => res.text())
-                .then(text => {
-                    // Очищуємо системне сміття від Google, дістаючи чистий JSON додатка
-                    const rawJson = JSON.parse(text.substring(47, text.length - 2));
-                    const rows = rawJson.table.rows;
-                    
+                .then(csvText => {
+                    const rows = csvText.split("\n").map(row => row.split(","));
                     fightersData = [];
 
-                    rows.forEach((row, i) => {
-                        const cols = row.c;
-                        if (!cols || !cols[1] || !cols[1].v) return; // Пропуск порожніх
+                    // i = 1, щоб пропустити заголовок таблиці
+                    for (let i = 1; i < rows.length; i++) {
+                        const cols = rows[i];
+                        if (!cols || cols.length < 2 || !cols[1]) continue;
 
-                        let name = cols[1].v.toString().trim();
-                        
-                        // Повний захист від потрапляння JS-коду
-                        if (name.includes('function') || name.includes('return') || name.includes('{') || name.length > 25) {
-                            return;
-                        }
+                        let name = cols[1].replace(/["']/g, "").trim();
+                        if (name === "" || name.includes('function') || name.includes('return')) continue;
 
-                        let wins = cols[2] ? parseInt(cols[2].v) || 0 : 0;
-                        let losses = cols[3] ? parseInt(cols[3].v) || 0 : 0;
-                        let arms = cols[4] ? cols[4].v.toString() : "—";
-                        let height = cols[5] ? cols[5].v.toString() : "—";
-                        let weight = cols[6] ? cols[6].v.toString() : "—";
-                        let chin = cols[7] ? cols[7].v.toString() : "—";
+                        let wins = parseInt(cols[2]) || 0;
+                        let losses = parseInt(cols[3]) || 0;
+                        let arms = cols[4] ? cols[4].trim() : "—";
+                        let height = cols[5] ? cols[5].trim() : "—";
+                        let weight = cols[6] ? cols[6].trim() : "—";
+                        let chin = cols[7] ? cols[7].trim() : "—";
 
                         let effectiveLosses = losses === 0 ? 1 : losses;
                         let kd = (wins / effectiveLosses).toFixed(2);
@@ -622,22 +615,22 @@
                             arms: arms, height: height, weight: weight, chin: chin,
                             kd: parseFloat(kd)
                         });
-                    });
+                    }
 
-                    // Сортуємо за KD
+                    // Сортуємо за коефіцієнтом KD
                     fightersData.sort((a, b) => b.kd - a.kd);
                     localStorage.setItem('cached_fighters_list', JSON.stringify(fightersData));
                     renderLeaderboard();
                 })
                 .catch(err => {
+                    console.error(err);
                     if (localCache) {
                         fightersData = JSON.parse(localCache);
                         renderLeaderboard();
-                        alert("Мережа недоступна. Завантажено дані з локального кешу додатка.");
+                        alert("Мережа недоступна. Завантажено дані з локального кешу.");
                     } else {
                         def('loading-text').innerText = "Помилка завантаження! Перевірте доступ до таблиці.";
                     }
-                    console.error(err);
                 });
         }
 
