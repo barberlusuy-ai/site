@@ -376,7 +376,7 @@
 
     <div id="passwordModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-top:0; color:var(--accent-blue);">Вхід в Адмінку</h3>
+            <h3 style="margin-top:0; color:var(--accent-blue);">Вхід в <span data-minify="true">Адмінку</span></h3>
             <input type="password" id="passInput" placeholder="Введіть пароль">
             <button onclick="checkAdminPassword()" class="modal-btn-action">Увійти</button>
             <button onclick="closeModal('passwordModal')" style="background:none; border:none; color:#64748b; margin-top:14px; cursor:pointer; font-weight:bold;">Скасувати</button>
@@ -471,7 +471,6 @@
 
     <script>
         const SPREADSHEET_ID = '1qsUMSrSEvVQqx5gc8aPbtJXAgI5ciGK1zQwyB8sviH8';
-        // Прямий експорт у чистий CSV формат, щоб уникнути блокувань браузера
         const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
 
         const tg = window.Telegram.WebApp;
@@ -518,40 +517,54 @@
             }
         }
 
-        // Завантаження через чистий CSV
+        // Залізобетонний розумний парсер CSV
         function loadFightersFromSheets() {
             def('loading-text').style.display = 'block';
-            def('loading-text').innerText = "Завантаження даних з таблиці...";
+            def('loading-text').innerText = "Оновлення списку бійців...";
             def('leaderboard-container').innerHTML = '';
 
             fetch(SHEET_URL)
                 .then(res => res.text())
                 .then(text => {
-                    // Розбиваємо CSV рядки правильно
-                    let lines = text.split('\n').map(line => {
-                        // Обробка ком всередині кавичок, якщо вони будуть
-                        return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    });
-                    
+                    if (!text || text.trim() === "") {
+                        throw new Error("Отримано пустий файл конфігурації.");
+                    }
+
+                    // Визначаємо роздільник: кома або крапка з комою
+                    let firstLine = text.split('\n')[0];
+                    let delimiter = ',';
+                    if (firstLine.includes(';') && !firstLine.includes(',')) {
+                        delimiter = ';';
+                    }
+
+                    let lines = text.split('\n');
                     fightersData = [];
 
-                    lines.forEach((row, index) => {
-                        if (index === 0) return; // Пропускаємо заголовки стовпців
-                        if (!row[1] || row[1].trim() === "") return; // Перевірка стовпця B (Name)
+                    for (let i = 1; i < lines.length; i++) {
+                        let line = lines[i].trim();
+                        if (!line) continue;
 
-                        let name = row[1].replace(/"/g, '').trim();
+                        // Розбиваємо рядок за визначеним роздільником
+                        let row = line.split(delimiter).map(col => col.replace(/^"|"$/g, '').trim());
+                        
+                        // Перевіряємо стовпець B (Name)
+                        let name = row[1];
+                        if (!name || name === "" || name.includes('function') || name.includes('=') || name.length > 30) {
+                            continue; // Ігноруємо порожні рядки або системний бруд
+                        }
+
                         let wins = parseInt(row[2]) || 0;
                         let losses = parseInt(row[3]) || 0;
-                        let arms = row[4] ? row[4].replace(/"/g, '').trim() : "0 см";
-                        let height = row[5] ? row[5].replace(/"/g, '').trim() : "0 см";
-                        let weight = row[6] ? row[6].replace(/"/g, '').trim() : "0 кг";
-                        let chin = row[7] ? row[7].replace(/"/g, '').trim() : "0 см";
+                        let arms = row[4] || "0 см";
+                        let height = row[5] || "0 см";
+                        let weight = row[6] || "0 кг";
+                        let chin = row[7] || "0 см";
 
                         let effectiveLosses = losses === 0 ? 1 : losses;
                         let kd = (wins / effectiveLosses).toFixed(2);
 
                         fightersData.push({
-                            id: index,
+                            id: i,
                             name: name,
                             wins: wins,
                             losses: losses,
@@ -561,14 +574,14 @@
                             chin: chin,
                             kd: parseFloat(kd)
                         });
-                    });
+                    }
 
-                    // Сортуємо за KD
+                    // Сортуємо лідерів по KD
                     fightersData.sort((a, b) => b.kd - a.kd);
                     renderLeaderboard();
                 })
                 .catch(err => {
-                    def('loading-text').innerText = "Помилка завантаження! Перевірте доступ до таблиці.";
+                    def('loading-text').innerText = "Помилка завантаження! Спробуйте ще раз.";
                     console.error(err);
                 });
         }
@@ -579,7 +592,7 @@
             container.innerHTML = "";
 
             if(fightersData.length === 0) {
-                container.innerHTML = "<div style='text-align:center; color:#64748b;'>Немає бійців у таблиці.</div>";
+                container.innerHTML = "<div style='text-align:center; color:#64748b; padding: 20px;'>Чекаємо на завантаження таблиці...</div>";
                 return;
             }
 
@@ -637,24 +650,7 @@
         }
 
         function openFighterProfileByName(name) {
-            if (fightersData.length === 0) {
-                fetch(SHEET_URL)
-                    .then(res => res.text())
-                    .then(text => {
-                        const lines = text.split('\n').map(line => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-                        fightersData = [];
-                        lines.forEach((row, index) => {
-                            if (index === 0 || !row[1] || row[1].trim() === "") return;
-                            fightersData.push({
-                                name: row[1].replace(/"/g, '').trim(), wins: parseInt(row[2])||0, losses: parseInt(row[3])||0,
-                                arms: row[4]?row[4].replace(/"/g, '').trim():"0 см", height: row[5]?row[5].replace(/"/g, '').trim():"0 см", weight: row[6]?row[6].replace(/"/g, '').trim():"0 кг", chin: row[7]?row[7].replace(/"/g, '').trim():"0 см"
-                            });
-                        });
-                        openFighterProfile(name);
-                    }).catch(() => openFighterProfile(name));
-            } else {
-                openFighterProfile(name);
-            }
+            openFighterProfile(name);
         }
 
         function openPasswordModal() {
