@@ -471,7 +471,7 @@
 
     <script>
         const SPREADSHEET_ID = '1qsUMSrSEvVQqx5gc8aPbtJXAgI5ciGK1zQwyB8sviH8';
-        const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+        const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
 
         const tg = window.Telegram.WebApp;
         if(tg) tg.expand();
@@ -517,34 +517,33 @@
             }
         }
 
-        // АВТОМАТИЧНЕ ЗАВАНТАЖЕННЯ З GOOGLE ТАБЛИЦІ
+        // ЗАВАНТАЖЕННЯ ЧЕРЕЗ ЧИСТИЙ CSV (БЕЗ ПОМИЛОК ДОСТУПУ)
         function loadFightersFromSheets() {
             def('loading-text').style.display = 'block';
             def('leaderboard-container').innerHTML = '';
 
             fetch(SHEET_URL)
                 .then(res => res.text())
-                .then(txt => {
-                    const json = JSON.parse(txt.substr(47).slice(0, -2));
-                    const rows = json.table.rows;
+                .then(text => {
+                    const lines = text.split('\n').map(line => line.split(','));
                     fightersData = [];
 
-                    rows.forEach((row, index) => {
+                    lines.forEach((row, index) => {
                         if (index === 0) return; 
-                        if (!row.c[1] || !row.c[1].v) return; 
+                        if (!row[1] || row[1].trim() === "") return; 
 
-                        let name = row.c[1].v;
-                        let wins = row.c[2] ? parseInt(row.c[2].v) || 0 : 0;
-                        let losses = row.c[3] ? parseInt(row.c[3].v) || 0 : 0;
-                        let arms = row.c[4] ? row.c[4].v : "0 см";
-                        let height = row.c[5] ? row.c[5].v : "0 см";
-                        let weight = row.c[6] ? row.c[6].v : "0 кг";
-                        let chin = row.c[7] ? row.c[7].v : "0 см";
+                        let name = row[1].replace(/"/g, '').trim();
+                        let wins = parseInt(row[2]) || 0;
+                        let losses = parseInt(row[3]) || 0;
+                        let arms = row[4] ? row[4].replace(/"/g, '').trim() : "0 см";
+                        let height = row[5] ? row[5].replace(/"/g, '').trim() : "0 см";
+                        let weight = row[6] ? row[6].replace(/"/g, '').trim() : "0 кг";
+                        let chin = row[7] ? row[7].replace(/"/g, '').trim() : "0 см";
 
                         let effectiveLosses = losses === 0 ? 1 : losses;
                         let kd = (wins / effectiveLosses).toFixed(2);
 
-                        fightersData.push({
+                    fightersData.push({
                             id: index,
                             name: name,
                             wins: wins,
@@ -603,7 +602,6 @@
         function openFighterProfile(name) {
             let f = fightersData.find(fighter => fighter.name === name);
             if (!f) {
-                // Якщо відкриваємо з сітки і даних в таблиці ще немає
                 def('profNameTitle').innerText = name;
                 def('lbl-arms').innerText = "—";
                 def('lbl-height').innerText = "—";
@@ -626,19 +624,17 @@
         }
 
         function openFighterProfileByName(name) {
-            // Спеціальний пошук для кліків з турнірної сітки
             if (fightersData.length === 0) {
                 fetch(SHEET_URL)
                     .then(res => res.text())
-                    .then(txt => {
-                        const json = JSON.parse(txt.substr(47).slice(0, -2));
-                        const rows = json.table.rows;
+                    .then(text => {
+                        const lines = text.split('\n').map(line => line.split(','));
                         fightersData = [];
-                        rows.forEach((row, index) => {
-                            if (index === 0 || !row.c[1] || !row.c[1].v) return;
+                        lines.forEach((row, index) => {
+                            if (index === 0 || !row[1] || row[1].trim() === "") return;
                             fightersData.push({
-                                name: row.c[1].v, wins: row.c[2]?parseInt(row.c[2].v)||0:0, losses: row.c[3]?parseInt(row.c[3].v)||0:0,
-                                arms: row.c[4]?row.c[4].v:"0 см", height: row.c[5]?row.c[5].v:"0 см", weight: row.c[6]?row.c[6].v:"0 кг", chin: row.c[7]?row.c[7].v:"0 см"
+                                name: row[1].replace(/"/g, '').trim(), wins: parseInt(row[2])||0, losses: parseInt(row[3])||0,
+                                arms: row[4]?row[4].replace(/"/g, '').trim():"0 см", height: row[5]?row[5].replace(/"/g, '').trim():"0 см", weight: row[6]?row[6].replace(/"/g, '').trim():"0 кг", chin: row[7]?row[7].replace(/"/g, '').trim():"0 см"
                             });
                         });
                         openFighterProfile(name);
@@ -744,7 +740,6 @@
             buildBracket();
         }
 
-        // ПОВНА ЛОГІКА ТУРНІРНОЇ СІТКИ (ПОВЕРНЕНО)
         function buildBracket() {
             const size = parseInt(def('custom-size-input').value);
             const container = def('bracket-grid');
