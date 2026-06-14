@@ -155,6 +155,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+            margin-bottom: 5px;
         }
         .leader-row { display: flex; justify-content: space-between; align-items: center; }
         
@@ -254,7 +255,6 @@
             font-weight: bold;
         }
 
-        /* Турнірна Сітка */
         .bracket {
             display: flex;
             gap: 40px;
@@ -461,7 +461,7 @@
         </div>
 
         <div class="bracket" id="bracket-grid"></div>
-        <button class="btn-back" onclick="goToMainPage()">Назад до списку</button>
+        <div style="text-align: center;"><button class="btn-back" onclick="goToMainPage()">Назад до списку</button></div>
     </div>
 
     <footer class="app-footer">
@@ -471,6 +471,7 @@
 
     <script>
         const SPREADSHEET_ID = '1qsUMSrSEvVQqx5gc8aPbtJXAgI5ciGK1zQwyB8sviH8';
+        // Прямий експорт у чистий CSV формат, щоб уникнути блокувань браузера
         const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv`;
 
         const tg = window.Telegram.WebApp;
@@ -517,20 +518,26 @@
             }
         }
 
-        // ЗАВАНТАЖЕННЯ ЧЕРЕЗ ЧИСТИЙ CSV (БЕЗ ПОМИЛОК ДОСТУПУ)
+        // Завантаження через чистий CSV
         function loadFightersFromSheets() {
             def('loading-text').style.display = 'block';
+            def('loading-text').innerText = "Завантаження даних з таблиці...";
             def('leaderboard-container').innerHTML = '';
 
             fetch(SHEET_URL)
                 .then(res => res.text())
                 .then(text => {
-                    const lines = text.split('\n').map(line => line.split(','));
+                    // Розбиваємо CSV рядки правильно
+                    let lines = text.split('\n').map(line => {
+                        // Обробка ком всередині кавичок, якщо вони будуть
+                        return line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    });
+                    
                     fightersData = [];
 
                     lines.forEach((row, index) => {
-                        if (index === 0) return; 
-                        if (!row[1] || row[1].trim() === "") return; 
+                        if (index === 0) return; // Пропускаємо заголовки стовпців
+                        if (!row[1] || row[1].trim() === "") return; // Перевірка стовпця B (Name)
 
                         let name = row[1].replace(/"/g, '').trim();
                         let wins = parseInt(row[2]) || 0;
@@ -543,7 +550,7 @@
                         let effectiveLosses = losses === 0 ? 1 : losses;
                         let kd = (wins / effectiveLosses).toFixed(2);
 
-                    fightersData.push({
+                        fightersData.push({
                             id: index,
                             name: name,
                             wins: wins,
@@ -556,6 +563,7 @@
                         });
                     });
 
+                    // Сортуємо за KD
                     fightersData.sort((a, b) => b.kd - a.kd);
                     renderLeaderboard();
                 })
@@ -569,6 +577,11 @@
             def('loading-text').style.display = 'none';
             const container = def('leaderboard-container');
             container.innerHTML = "";
+
+            if(fightersData.length === 0) {
+                container.innerHTML = "<div style='text-align:center; color:#64748b;'>Немає бійців у таблиці.</div>";
+                return;
+            }
 
             fightersData.forEach((f, index) => {
                 let rankClass = "";
@@ -628,7 +641,7 @@
                 fetch(SHEET_URL)
                     .then(res => res.text())
                     .then(text => {
-                        const lines = text.split('\n').map(line => line.split(','));
+                        const lines = text.split('\n').map(line => line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
                         fightersData = [];
                         lines.forEach((row, index) => {
                             if (index === 0 || !row[1] || row[1].trim() === "") return;
