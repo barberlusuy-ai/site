@@ -1,6 +1,7 @@
 export default async function handler(req, res) {
-    const KV_REST_API_URL = process.env.KV_REST_API_URL;
-    const KV_REST_API_TOKEN = process.env.KV_REST_API_TOKEN;
+    // Використовуємо змінні з префіксом STORAGE, які згенерував Vercel
+    const KV_REST_API_URL = process.env.STORAGE_REST_API_URL;
+    const KV_REST_API_TOKEN = process.env.STORAGE_REST_API_TOKEN;
 
     // Дозволяємо запити з будь-яких пристроїв (CORS)
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,6 +10,10 @@ export default async function handler(req, res) {
 
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
+    }
+
+    if (!KV_REST_API_URL || !KV_REST_API_TOKEN) {
+        return res.status(500).json({ error: "База даних не налаштована. Перевірте змінні оточення." });
     }
 
     try {
