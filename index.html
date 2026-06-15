@@ -201,7 +201,14 @@
         .leader-rank.rank-2 { color: #cbd5e1; text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
         .leader-rank.rank-3 { color: #f97316; text-shadow: 0 0 8px rgba(249, 115, 22, 0.3); }
         
-        .leader-name { font-weight: 700; font-size: 17px; letter-spacing: 0.3px; }
+        .leader-name { font-weight: 700; font-size: 17px; letter-spacing: 0.3px; display: flex; align-items: center; gap: 6px; }
+        .top-crown { font-size: 16px; animation: crownPulse 1.5s ease-in-out infinite; }
+        @keyframes crownPulse {
+            0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,215,0,0.4)); }
+            50% { transform: scale(1.15) rotate(5deg); filter: drop-shadow(0 0 8px rgba(255,215,0,0.8)); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,215,0,0.4)); }
+        }
+
         .leader-stats { display: flex; gap: 14px; align-items: center; }
         
         .kd-badge {
@@ -247,6 +254,22 @@
         }
         .btn-add-global:hover { background: rgba(0, 229, 255, 0.06); border-color: var(--accent-blue); box-shadow: 0 0 15px var(--accent-glow); }
         body.admin-mode .btn-add-global { display: block; }
+
+        .sync-panel {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            max-width: 500px;
+            margin-top: 10px;
+            background: rgba(18, 26, 44, 0.5);
+            border: 1px solid rgba(0, 229, 255, 0.15);
+            padding: 12px;
+            border-radius: 14px;
+        }
+        body.admin-mode .sync-panel { display: flex; }
+        .sync-btn { background: rgba(0, 229, 255, 0.1); border: 1px solid var(--accent-blue); color: var(--accent-blue); padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all var(--transition-fast); font-size: 13px; }
+        .sync-btn:hover { background: var(--accent-blue); color: black; box-shadow: 0 0 10px var(--accent-glow); }
 
         .admin-panel {
             display: none;
@@ -419,7 +442,14 @@
         .profile-grid { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
         .profile-item { display: flex; justify-content: space-between; background: rgba(7, 11, 20, 0.6); border: 1px solid rgba(255,255,255,0.03); padding: 12px 14px; border-radius: 12px; align-items: center; }
         .profile-item label { color: #94a3b8; font-weight: 500; }
-        .profile-item span { font-weight: 700; }
+        .profile-item span { font-weight: 700; text-align: right; max-width: 60%; word-break: break-word; }
+
+        .award-text { color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.4); font-weight: bold !important; }
+
+        .history-squares { display: flex; gap: 6px; flex-wrap: wrap; }
+        .square-h { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+        .square-h.w { background: var(--winner-green); box-shadow: 0 0 8px rgba(0, 230, 118, 0.4); }
+        .square-h.l { background: var(--loser-red); box-shadow: 0 0 8px rgba(255, 23, 68, 0.4); }
     </style>
 </head>
 <body>
@@ -466,6 +496,8 @@
                 <div id="profNameTitle" class="profile-name">Ім'я Бійця</div>
                 
                 <div class="profile-grid">
+                    <div class="profile-item"><label>Нагороди:</label><span id="lbl-awards" class="award-text">—</span></div>
+                    <div class="profile-item"><label>Останні бої:</label><div id="lbl-history" class="history-squares"></div></div>
                     <div class="profile-item"><label>Розмах рук:</label><span id="lbl-arms"></span></div>
                     <div class="profile-item"><label>Ріст:</label><span id="lbl-height"></span></div>
                     <div class="profile-item"><label>Вага:</label><span id="lbl-weight"></span></div>
@@ -492,6 +524,10 @@
         <div id="tournaments-section" class="content-list">
             <div id="tournaments-container"></div>
             <button class="btn-add-global" onclick="addNewTournament()">➕ Додати новий турнір</button>
+            <div class="sync-panel">
+                <button class="sync-btn" onclick="exportTournamentsData()">📋 Скопіювати код турнірів для бота/інших</button>
+                <button class="sync-btn" onclick="importTournamentsData()" style="background:rgba(255,255,255,0.03); border-color:#64748b; color:#cbd5e1;">📥 Імпортувати код турнірів</button>
+            </div>
         </div>
 
         <div id="leaderboard-section" class="content-list" style="display: none;">
@@ -525,7 +561,6 @@
     </footer>
 
     <script>
-        // Твоє надійне публічне CSV-посилання
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTdclAWe6-C6rOfvSOK2yxAb8PcgcKidA055DIPuWjyHualNRo2bL0M4cdW78H7iKFdTlbyoj0EUCCb/pub?output=csv";
 
         const tg = window.Telegram.WebApp;
@@ -573,7 +608,6 @@
             }
         }
 
-        // Нова залізобетонна функція завантаження з CSV
         function loadFightersFromSheets(forceRefresh = false) {
             def('loading-text').style.display = 'block';
             
@@ -592,7 +626,6 @@
                     const rows = csvText.split("\n").map(row => row.split(","));
                     fightersData = [];
 
-                    // i = 1, щоб пропустити заголовок таблиці
                     for (let i = 1; i < rows.length; i++) {
                         const cols = rows[i];
                         if (!cols || cols.length < 2 || !cols[1]) continue;
@@ -606,6 +639,8 @@
                         let height = cols[5] ? cols[5].trim() : "—";
                         let weight = cols[6] ? cols[6].trim() : "—";
                         let chin = cols[7] ? cols[7].trim() : "—";
+                        // Зчитуємо 9-й стовпець (Awards) з фото зображення_3.png
+                        let awards = cols[8] ? cols[8].replace(/["']/g, "").trim() : "—";
 
                         let effectiveLosses = losses === 0 ? 1 : losses;
                         let kd = (wins / effectiveLosses).toFixed(2);
@@ -613,11 +648,10 @@
                         fightersData.push({
                             id: i, name: name, wins: wins, losses: losses,
                             arms: arms, height: height, weight: weight, chin: chin,
-                            kd: parseFloat(kd)
+                            awards: awards || "—", kd: parseFloat(kd)
                         });
                     }
 
-                    // Сортуємо за коефіцієнтом KD
                     fightersData.sort((a, b) => b.kd - a.kd);
                     localStorage.setItem('cached_fighters_list', JSON.stringify(fightersData));
                     renderLeaderboard();
@@ -627,7 +661,7 @@
                     if (localCache) {
                         fightersData = JSON.parse(localCache);
                         renderLeaderboard();
-                        alert("Мережа недоступна. Завантажено дані з локального кешу.");
+                        alert("Мережа недоступна. Завантажено дані з кешу.");
                     } else {
                         def('loading-text').innerText = "Помилка завантаження! Перевірте доступ до таблиці.";
                     }
@@ -650,6 +684,9 @@
                 if (index === 1) rankClass = "rank-2";
                 if (index === 2) rankClass = "rank-3";
 
+                // Перевірка на перше місце: додаємо коронку біля нікнейму
+                let crownHTML = (index === 0) ? `<span class="top-crown">👑</span>` : "";
+
                 let card = document.createElement('div');
                 card.className = 'leader-card animate-fade-in';
                 card.style.animationDelay = `${index * 0.04}s`;
@@ -662,7 +699,7 @@
                                 <svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>
                             </div>
                             <span class="leader-rank ${rankClass}">#${index + 1}</span>
-                            <span class="leader-name">${f.name}</span>
+                            <span class="leader-name">${f.name} ${crownHTML}</span>
                         </div>
                     </div>
                     <div class="leader-row" style="margin-top: 4px;">
@@ -679,13 +716,38 @@
 
         function openFighterProfile(name) {
             let f = fightersData.find(fighter => fighter.name === name);
+            
+            let historyKey = `history_fighter_${name}`;
+            let battleHistory = JSON.parse(localStorage.getItem(historyKey)) || [];
+
+            const histContainer = def('lbl-history');
+            histContainer.innerHTML = "";
+            
+            if(battleHistory.length === 0) {
+                histContainer.innerHTML = "<span style='color:#64748b; font-weight:normal;'>Боїв немає</span>";
+            } else {
+                battleHistory.forEach(res => {
+                    let square = document.createElement('div');
+                    if (res === 'W') {
+                        square.className = 'square-h w';
+                        square.innerText = 'В';
+                    } else {
+                        square.className = 'square-h l';
+                        square.innerText = 'П';
+                    }
+                    histContainer.appendChild(square);
+                });
+            }
+
             if (!f) {
                 def('profNameTitle').innerText = name;
+                def('lbl-awards').innerText = "—";
                 def('lbl-arms').innerText = "—"; def('lbl-height').innerText = "—";
                 def('lbl-weight').innerText = "—"; def('lbl-wins').innerText = "0";
                 def('lbl-losses').innerText = "0"; def('lbl-chin').innerText = "—";
             } else {
                 def('profNameTitle').innerText = f.name;
+                def('lbl-awards').innerText = f.awards; // Виводимо текст нагород
                 def('lbl-arms').innerText = f.arms;
                 def('lbl-height').innerText = f.height;
                 def('lbl-weight').innerText = f.weight;
@@ -735,7 +797,7 @@
                         <span>${t.title} (Гравців: ${t.size})</span>
                     </div>
                     <div class="admin-controls">
-                        <button class="btn-action" onclick="deleteTournament(${t.id})">❌ Видалити</button>
+                        <button class="btn-action" onclick="deleteTournament(${t.id})">❌</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -763,6 +825,32 @@
                 localStorage.removeItem(`bracket_winners_t_${id}`);
                 localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
                 renderTournaments();
+            }
+        }
+
+        // Синхронізація турнірів для інших користувачів
+        function exportTournamentsData() {
+            let dataStr = btoa(encodeURIComponent(JSON.stringify(tournamentsData)));
+            navigator.clipboard.writeText(dataStr).then(() => {
+                alert("Код турнірів скопійовано! Надішли його іншим адміністраторам або збережи.");
+            });
+        }
+
+        function importTournamentsData() {
+            let code = prompt("Введіть згенерований код турнірів від іншого адміна:");
+            if (!code) return;
+            try {
+                let parsed = JSON.parse(decodeURIComponent(atob(code)));
+                if (Array.isArray(parsed)) {
+                    tournamentsData = parsed;
+                    localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
+                    renderTournaments();
+                    alert("Турніри успішно синхронізовано та оновлено!");
+                } else {
+                    alert("Невірний формат коду!");
+                }
+            } catch(e) {
+                alert("Помилка імпорту! Переконайся, що код правильний.");
             }
         }
 
@@ -867,13 +955,27 @@
         function setWinner(winnerId, loserId, nextId) {
             const winEl = def(winnerId); const loseEl = def(loserId);
 
+            if (winEl.classList.contains('winner')) return;
+
             winEl.classList.remove('loser'); winEl.classList.add('winner');
             loseEl.classList.remove('winner'); loseEl.classList.add('loser');
 
-            const winnerName = winEl.querySelector('.fighter-name-wrapper').innerText;
+            const winnerName = winEl.querySelector('.fighter-name-wrapper').innerText.trim();
+            const loserName = loseEl.querySelector('.fighter-name-wrapper').innerText.trim();
             const nextEl = def(nextId);
             if (nextEl) nextEl.querySelector('.fighter-name-wrapper').innerText = winnerName;
             
+            if (winnerName !== "?" && !winnerName.startsWith("Боєць")) {
+                let wHist = JSON.parse(localStorage.getItem(`history_fighter_${winnerName}`)) || [];
+                wHist.push('W');
+                localStorage.setItem(`history_fighter_${winnerName}`, JSON.stringify(wHist));
+            }
+            if (loserName !== "?" && !loserName.startsWith("Боєць")) {
+                let lHist = JSON.parse(localStorage.getItem(`history_fighter_${loserName}`)) || [];
+                lHist.push('L');
+                localStorage.setItem(`history_fighter_${loserName}`, JSON.stringify(lHist));
+            }
+
             saveBracketInputs();
             saveBracketWinners();
         }
