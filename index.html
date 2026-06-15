@@ -202,7 +202,7 @@
         .leader-rank.rank-3 { color: #f97316; text-shadow: 0 0 8px rgba(249, 115, 22, 0.3); }
         
         .leader-name { font-weight: 700; font-size: 17px; letter-spacing: 0.3px; display: flex; align-items: center; gap: 6px; }
-        .top-crown { font-size: 16px; animation: crownPulse 1.5s ease-in-out infinite; }
+        .top-crown { font-size: 16px; animation: crownPulse 1.5s ease-in-out infinite; display: inline-block; }
         @keyframes crownPulse {
             0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,215,0,0.4)); }
             50% { transform: scale(1.15) rotate(5deg); filter: drop-shadow(0 0 8px rgba(255,215,0,0.8)); }
@@ -255,20 +255,30 @@
         .btn-add-global:hover { background: rgba(0, 229, 255, 0.06); border-color: var(--accent-blue); box-shadow: 0 0 15px var(--accent-glow); }
         body.admin-mode .btn-add-global { display: block; }
 
+        /* Кнопки синхронізації */
         .sync-panel {
             display: none;
             flex-direction: column;
             gap: 10px;
             width: 100%;
             max-width: 500px;
-            margin-top: 10px;
-            background: rgba(18, 26, 44, 0.5);
-            border: 1px solid rgba(0, 229, 255, 0.15);
-            padding: 12px;
-            border-radius: 14px;
+            margin-top: 15px;
+            background: rgba(18, 26, 44, 0.6);
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            padding: 14px;
+            border-radius: 16px;
         }
-        body.admin-mode .sync-panel { display: flex; }
-        .sync-btn { background: rgba(0, 229, 255, 0.1); border: 1px solid var(--accent-blue); color: var(--accent-blue); padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all var(--transition-fast); font-size: 13px; }
+        .sync-btn { 
+            background: rgba(0, 229, 255, 0.1); 
+            border: 1px solid var(--accent-blue); 
+            color: var(--accent-blue); 
+            padding: 12px; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: all var(--transition-fast); 
+            font-size: 13px; 
+        }
         .sync-btn:hover { background: var(--accent-blue); color: black; box-shadow: 0 0 10px var(--accent-glow); }
 
         .admin-panel {
@@ -524,7 +534,9 @@
         <div id="tournaments-section" class="content-list">
             <div id="tournaments-container"></div>
             <button class="btn-add-global" onclick="addNewTournament()">➕ Додати новий турнір</button>
-            <div class="sync-panel">
+            
+            <!-- Панель синхронізації -->
+            <div class="sync-panel" id="globalSyncPanel">
                 <button class="sync-btn" onclick="exportTournamentsData()">📋 Скопіювати код турнірів для бота/інших</button>
                 <button class="sync-btn" onclick="importTournamentsData()" style="background:rgba(255,255,255,0.03); border-color:#64748b; color:#cbd5e1;">📥 Імпортувати код турнірів</button>
             </div>
@@ -639,7 +651,6 @@
                         let height = cols[5] ? cols[5].trim() : "—";
                         let weight = cols[6] ? cols[6].trim() : "—";
                         let chin = cols[7] ? cols[7].trim() : "—";
-                        // Зчитуємо 9-й стовпець (Awards) з фото зображення_3.png
                         let awards = cols[8] ? cols[8].replace(/["']/g, "").trim() : "—";
 
                         let effectiveLosses = losses === 0 ? 1 : losses;
@@ -684,7 +695,6 @@
                 if (index === 1) rankClass = "rank-2";
                 if (index === 2) rankClass = "rank-3";
 
-                // Перевірка на перше місце: додаємо коронку біля нікнейму
                 let crownHTML = (index === 0) ? `<span class="top-crown">👑</span>` : "";
 
                 let card = document.createElement('div');
@@ -747,7 +757,7 @@
                 def('lbl-losses').innerText = "0"; def('lbl-chin').innerText = "—";
             } else {
                 def('profNameTitle').innerText = f.name;
-                def('lbl-awards').innerText = f.awards; // Виводимо текст нагород
+                def('lbl-awards').innerText = f.awards; 
                 def('lbl-arms').innerText = f.arms;
                 def('lbl-height').innerText = f.height;
                 def('lbl-weight').innerText = f.weight;
@@ -763,6 +773,7 @@
                 document.body.classList.remove('admin-mode');
                 def('mainGear').classList.remove('active');
                 def('bracketGear').classList.remove('active');
+                def('globalSyncPanel').style.display = 'none'; // Ховаємо панель
                 renderTournaments();
                 if(currentTournamentId) buildBracket();
                 return;
@@ -776,6 +787,7 @@
                 document.body.classList.add('admin-mode');
                 def('mainGear').classList.add('active');
                 def('bracketGear').classList.add('active');
+                def('globalSyncPanel').style.display = 'flex'; // Відображаємо панель синхронізації
                 closeModal('passwordModal');
                 def('passInput').value = '';
                 renderTournaments();
@@ -828,16 +840,15 @@
             }
         }
 
-        // Синхронізація турнірів для інших користувачів
         function exportTournamentsData() {
             let dataStr = btoa(encodeURIComponent(JSON.stringify(tournamentsData)));
             navigator.clipboard.writeText(dataStr).then(() => {
-                alert("Код турнірів скопійовано! Надішли його іншим адміністраторам або збережи.");
+                alert("Код турнірів скопійовано! Надішли його іншим або встав у бота.");
             });
         }
 
         function importTournamentsData() {
-            let code = prompt("Введіть згенерований код турнірів від іншого адміна:");
+            let code = prompt("Введіть згенерований код турнірів:");
             if (!code) return;
             try {
                 let parsed = JSON.parse(decodeURIComponent(atob(code)));
@@ -845,7 +856,7 @@
                     tournamentsData = parsed;
                     localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
                     renderTournaments();
-                    alert("Турніри успішно синхронізовано та оновлено!");
+                    alert("Турніри успішно синхронізовано!");
                 } else {
                     alert("Невірний формат коду!");
                 }
