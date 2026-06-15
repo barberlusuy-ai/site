@@ -255,32 +255,6 @@
         .btn-add-global:hover { background: rgba(0, 229, 255, 0.06); border-color: var(--accent-blue); box-shadow: 0 0 15px var(--accent-glow); }
         body.admin-mode .btn-add-global { display: block; }
 
-        /* Кнопки синхронізації */
-        .sync-panel {
-            display: none;
-            flex-direction: column;
-            gap: 10px;
-            width: 100%;
-            max-width: 500px;
-            margin-top: 15px;
-            background: rgba(18, 26, 44, 0.6);
-            border: 1px solid rgba(0, 229, 255, 0.2);
-            padding: 14px;
-            border-radius: 16px;
-        }
-        .sync-btn { 
-            background: rgba(0, 229, 255, 0.1); 
-            border: 1px solid var(--accent-blue); 
-            color: var(--accent-blue); 
-            padding: 12px; 
-            border-radius: 10px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: all var(--transition-fast); 
-            font-size: 13px; 
-        }
-        .sync-btn:hover { background: var(--accent-blue); color: black; box-shadow: 0 0 10px var(--accent-glow); }
-
         .admin-panel {
             display: none;
             background: rgba(15, 23, 42, 0.9);
@@ -504,7 +478,6 @@
                     </div>
                 </div>
                 <div id="profNameTitle" class="profile-name">Ім'я Бійця</div>
-                
                 <div class="profile-grid">
                     <div class="profile-item"><label>Нагороди:</label><span id="lbl-awards" class="award-text">—</span></div>
                     <div class="profile-item"><label>Останні бої:</label><div id="lbl-history" class="history-squares"></div></div>
@@ -532,14 +505,9 @@
         </div>
 
         <div id="tournaments-section" class="content-list">
+            <div id="loading-tournaments" style="text-align:center; color:var(--accent-blue); padding:10px;">Синхронізація хмари...</div>
             <div id="tournaments-container"></div>
             <button class="btn-add-global" onclick="addNewTournament()">➕ Додати новий турнір</button>
-            
-            <!-- Панель синхронізації -->
-            <div class="sync-panel" id="globalSyncPanel">
-                <button class="sync-btn" onclick="exportTournamentsData()">📋 Скопіювати код турнірів для бота/інших</button>
-                <button class="sync-btn" onclick="importTournamentsData()" style="background:rgba(255,255,255,0.03); border-color:#64748b; color:#cbd5e1;">📥 Імпортувати код турнірів</button>
-            </div>
         </div>
 
         <div id="leaderboard-section" class="content-list" style="display: none;">
@@ -574,19 +542,40 @@
 
     <script>
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTdclAWe6-C6rOfvSOK2yxAb8PcgcKidA055DIPuWjyHualNRo2bL0M4cdW78H7iKFdTlbyoj0EUCCb/pub?output=csv";
+        const API_URL = "/api/tournaments";
 
         const tg = window.Telegram.WebApp;
         if(tg) tg.expand();
 
-        let tournamentsData = JSON.parse(localStorage.getItem('tournamentsData')) || [
-            { id: 1, title: "Тurnir #1: Перша Кров", size: 8 }
-        ];
-
+        let tournamentsData = [];
         let fightersData = []; 
         let currentTournamentId = null;
         let currentTab = 'tournaments';
 
         function def(id){ return document.getElementById(id); }
+
+        function loadTournamentsFromServer() {
+            def('loading-tournaments').style.display = 'block';
+            fetch(API_URL)
+                .then(res => res.json())
+                .then(data => {
+                    tournamentsData = data || [];
+                    renderTournaments();
+                    def('loading-tournaments').style.display = 'none';
+                })
+                .catch(err => {
+                    console.error("Помилка хмари:", err);
+                    def('loading-tournaments').innerText = "Помилка оновлення сіток.";
+                });
+        }
+
+        function saveTournamentsToServer() {
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(tournamentsData)
+            }).catch(err => console.error("Помилка збереження:", err));
+        }
 
         function openModal(id) {
             const m = def(id);
@@ -609,7 +598,7 @@
                 def('leaderboard-section').style.display = 'none';
                 def('tournaments-section').style.display = 'flex';
                 def('main-title').innerText = "🏆 Панель Турнірів 🏆";
-                renderTournaments();
+                loadTournamentsFromServer();
             } else {
                 def('tab-tournaments').classList.remove('active');
                 def('tab-leaderboard').classList.add('active');
@@ -622,7 +611,6 @@
 
         function loadFightersFromSheets(forceRefresh = false) {
             def('loading-text').style.display = 'block';
-            
             let localCache = localStorage.getItem('cached_fighters_list');
             if (localCache && !forceRefresh) {
                 fightersData = JSON.parse(localCache);
@@ -630,20 +618,16 @@
                 return;
             }
 
-            def('loading-text').innerText = "Оновлення списку бійців...";
-
             fetch(SHEET_CSV_URL)
                 .then(res => res.text())
                 .then(csvText => {
                     const rows = csvText.split("\n").map(row => row.split(","));
                     fightersData = [];
-
                     for (let i = 1; i < rows.length; i++) {
                         const cols = rows[i];
                         if (!cols || cols.length < 2 || !cols[1]) continue;
-
                         let name = cols[1].replace(/["']/g, "").trim();
-                        if (name === "" || name.includes('function') || name.includes('return')) continue;
+                        if (name === "" || name.includes('function')) continue;
 
                         let wins = parseInt(cols[2]) || 0;
                         let losses = parseInt(cols[3]) || 0;
@@ -652,7 +636,6 @@
                         let weight = cols[6] ? cols[6].trim() : "—";
                         let chin = cols[7] ? cols[7].trim() : "—";
                         let awards = cols[8] ? cols[8].replace(/["']/g, "").trim() : "—";
-
                         let effectiveLosses = losses === 0 ? 1 : losses;
                         let kd = (wins / effectiveLosses).toFixed(2);
 
@@ -662,19 +645,16 @@
                             awards: awards || "—", kd: parseFloat(kd)
                         });
                     }
-
                     fightersData.sort((a, b) => b.kd - a.kd);
                     localStorage.setItem('cached_fighters_list', JSON.stringify(fightersData));
                     renderLeaderboard();
                 })
                 .catch(err => {
-                    console.error(err);
                     if (localCache) {
                         fightersData = JSON.parse(localCache);
                         renderLeaderboard();
-                        alert("Мережа недоступна. Завантажено дані з кешу.");
                     } else {
-                        def('loading-text').innerText = "Помилка завантаження! Перевірте доступ до таблиці.";
+                        def('loading-text').innerText = "Помилка завантаження таблиці.";
                     }
                 });
         }
@@ -683,36 +663,22 @@
             def('loading-text').style.display = 'none';
             const container = def('leaderboard-container');
             container.innerHTML = "";
-
-            if(fightersData.length === 0) {
-                container.innerHTML = "<div style='text-align:center; color:#64748b; padding: 20px;'>Дані відсутні...</div>";
-                return;
-            }
-
             fightersData.forEach((f, index) => {
-                let rankClass = "";
-                if (index === 0) rankClass = "rank-1";
-                if (index === 1) rankClass = "rank-2";
-                if (index === 2) rankClass = "rank-3";
-
-                let crownHTML = (index === 0) ? `<span class="top-crown">👑</span>` : "";
-
+                let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
+                let crownHTML = index === 0 ? `<span class="top-crown">👑</span>` : "";
                 let card = document.createElement('div');
                 card.className = 'leader-card animate-fade-in';
                 card.style.animationDelay = `${index * 0.04}s`;
                 card.onclick = () => openFighterProfile(f.name);
-
                 card.innerHTML = `
                     <div class="leader-row">
                         <div class="leader-clickable">
-                            <div class="mini-avatar">
-                                <svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>
-                            </div>
+                            <div class="mini-avatar"><svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg></div>
                             <span class="leader-rank ${rankClass}">#${index + 1}</span>
                             <span class="leader-name">${f.name} ${crownHTML}</span>
                         </div>
                     </div>
-                    <div class="leader-row" style="margin-top: 4px;">
+                    <div class="leader-row" style="margin-top:4px;">
                         <div class="leader-stats">
                             <span>В: <strong style="color:var(--winner-green)">${f.wins}</strong></span>
                             <span>П: <strong style="color:var(--loser-red)">${f.losses}</strong></span>
@@ -726,10 +692,8 @@
 
         function openFighterProfile(name) {
             let f = fightersData.find(fighter => fighter.name === name);
-            
             let historyKey = `history_fighter_${name}`;
             let battleHistory = JSON.parse(localStorage.getItem(historyKey)) || [];
-
             const histContainer = def('lbl-history');
             histContainer.innerHTML = "";
             
@@ -738,31 +702,22 @@
             } else {
                 battleHistory.forEach(res => {
                     let square = document.createElement('div');
-                    if (res === 'W') {
-                        square.className = 'square-h w';
-                        square.innerText = 'В';
-                    } else {
-                        square.className = 'square-h l';
-                        square.innerText = 'П';
-                    }
+                    square.className = res === 'W' ? 'square-h w' : 'square-h l';
+                    square.innerText = res === 'W' ? 'В' : 'П';
                     histContainer.appendChild(square);
                 });
             }
 
             if (!f) {
                 def('profNameTitle').innerText = name;
-                def('lbl-awards').innerText = "—";
-                def('lbl-arms').innerText = "—"; def('lbl-height').innerText = "—";
-                def('lbl-weight').innerText = "—"; def('lbl-wins').innerText = "0";
-                def('lbl-losses').innerText = "0"; def('lbl-chin').innerText = "—";
+                def('lbl-awards').innerText = "—"; def('lbl-arms').innerText = "—"; 
+                def('lbl-height').innerText = "—"; def('lbl-weight').innerText = "—"; 
+                def('lbl-wins').innerText = "0"; def('lbl-losses').innerText = "0"; def('lbl-chin').innerText = "—";
             } else {
                 def('profNameTitle').innerText = f.name;
-                def('lbl-awards').innerText = f.awards; 
-                def('lbl-arms').innerText = f.arms;
-                def('lbl-height').innerText = f.height;
-                def('lbl-weight').innerText = f.weight;
-                def('lbl-wins').innerText = f.wins;
-                def('lbl-losses').innerText = f.losses;
+                def('lbl-awards').innerText = f.awards; def('lbl-arms').innerText = f.arms;
+                def('lbl-height').innerText = f.height; def('lbl-weight').innerText = f.weight;
+                def('lbl-wins').innerText = f.wins; def('lbl-losses').innerText = f.losses;
                 def('lbl-chin').innerText = f.chin;
             }
             openModal('profileModal');
@@ -773,7 +728,6 @@
                 document.body.classList.remove('admin-mode');
                 def('mainGear').classList.remove('active');
                 def('bracketGear').classList.remove('active');
-                def('globalSyncPanel').style.display = 'none'; // Ховаємо панель
                 renderTournaments();
                 if(currentTournamentId) buildBracket();
                 return;
@@ -787,7 +741,6 @@
                 document.body.classList.add('admin-mode');
                 def('mainGear').classList.add('active');
                 def('bracketGear').classList.add('active');
-                def('globalSyncPanel').style.display = 'flex'; // Відображаємо панель синхронізації
                 closeModal('passwordModal');
                 def('passInput').value = '';
                 renderTournaments();
@@ -825,43 +778,16 @@
                 return;
             }
             let newId = tournamentsData.length > 0 ? Math.max(...tournamentsData.map(t => t.id)) + 1 : 1;
-            tournamentsData.push({ id: newId, title: title, size: size });
-            localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
+            tournamentsData.push({ id: newId, title: title, size: size, inputs: {}, winners: {} });
+            saveTournamentsToServer();
             renderTournaments();
         }
 
         function deleteTournament(id) {
             if (confirm("Видалити цей турнір?")) {
                 tournamentsData = tournamentsData.filter(t => t.id !== id);
-                localStorage.removeItem(`bracket_input_t_${id}`);
-                localStorage.removeItem(`bracket_winners_t_${id}`);
-                localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
+                saveTournamentsToServer();
                 renderTournaments();
-            }
-        }
-
-        function exportTournamentsData() {
-            let dataStr = btoa(encodeURIComponent(JSON.stringify(tournamentsData)));
-            navigator.clipboard.writeText(dataStr).then(() => {
-                alert("Код турнірів скопійовано! Надішли його іншим або встав у бота.");
-            });
-        }
-
-        function importTournamentsData() {
-            let code = prompt("Введіть згенерований код турнірів:");
-            if (!code) return;
-            try {
-                let parsed = JSON.parse(decodeURIComponent(atob(code)));
-                if (Array.isArray(parsed)) {
-                    tournamentsData = parsed;
-                    localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
-                    renderTournaments();
-                    alert("Турніри успішно синхронізовано!");
-                } else {
-                    alert("Невірний формат коду!");
-                }
-            } catch(e) {
-                alert("Помилка імпорту! Переконайся, що код правильний.");
             }
         }
 
@@ -878,7 +804,7 @@
             def('bracket-page').classList.remove('active');
             def('main-page').classList.add('active');
             currentTournamentId = null;
-            renderTournaments();
+            loadTournamentsFromServer();
         }
 
         function updateTournamentSize() {
@@ -890,22 +816,24 @@
             let t = tournamentsData.find(t => t.id === currentTournamentId);
             if(t) {
                 t.size = size;
-                localStorage.setItem('tournamentsData', JSON.stringify(tournamentsData));
+                t.inputs = {};
+                t.winners = {};
+                saveTournamentsToServer();
             }
-            localStorage.removeItem(`bracket_input_t_${currentTournamentId}`);
-            localStorage.removeItem(`bracket_winners_t_${currentTournamentId}`);
             buildBracket();
         }
 
         function buildBracket() {
-            const size = parseInt(def('custom-size-input').value);
+            let t = tournamentsData.find(x => x.id === currentTournamentId);
+            if (!t) return;
+
+            const size = t.size;
             const container = def('bracket-grid');
             container.innerHTML = "";
 
             let roundsCount = Math.log2(size);
-            let savedInputs = JSON.parse(localStorage.getItem(`bracket_input_t_${currentTournamentId}`)) || {};
-            let savedWinners = JSON.parse(localStorage.getItem(`bracket_winners_t_${currentTournamentId}`)) || {};
-
+            let savedInputs = t.inputs || {};
+            let savedWinners = t.winners || {};
             let matchesInRound = size / 2;
 
             for (let r = 0; r < roundsCount; r++) {
@@ -918,11 +846,11 @@
                     matchupEl.className = 'matchup animate-fade-in';
                     matchupEl.style.animationDelay = `${m * 0.03}s`;
                     
-                    let f1_id = `t_${currentTournamentId}_r_${r}_m_${m}_f_1`;
-                    let f2_id = `t_${currentTournamentId}_r_${r}_m_${m}_f_2`;
+                    let f1_id = `r_${r}_m_${m}_f_1`;
+                    let f2_id = `r_${r}_m_${m}_f_2`;
                     let next_f_node = (m % 2 === 0) ? 1 : 2;
                     let next_m_index = Math.floor(m / 2);
-                    let next_id = `t_${currentTournamentId}_r_${r+1}_m_${next_m_index}_f_${next_f_node}`;
+                    let next_id = `r_${r+1}_m_${next_m_index}_f_${next_f_node}`;
 
                     let f1_name = savedInputs[f1_id] || (r === 0 ? `Боєць ${m * 2 + 1}` : "?");
                     let f2_name = savedInputs[f2_id] || (r === 0 ? `Боєць ${m * 2 + 2}` : "?");
@@ -950,13 +878,13 @@
 
         function handleFighterClick(element) {
             let currentName = element.innerText.trim();
-            if (currentName === "?" || currentName === "— ПРОПУСКАЄ РАУНД —") return;
+            if (currentName === "?") return;
 
             if (document.body.classList.contains('admin-mode')) {
                 let newName = prompt("Змінити ім'я бійця:", currentName);
                 if (newName && newName.trim() !== "") {
                     element.innerText = newName.trim();
-                    saveBracketInputs();
+                    saveBracketState();
                 }
             } else {
                 openFighterProfile(currentName);
@@ -965,7 +893,6 @@
 
         function setWinner(winnerId, loserId, nextId) {
             const winEl = def(winnerId); const loseEl = def(loserId);
-
             if (winEl.classList.contains('winner')) return;
 
             winEl.classList.remove('loser'); winEl.classList.add('winner');
@@ -978,34 +905,33 @@
             
             if (winnerName !== "?" && !winnerName.startsWith("Боєць")) {
                 let wHist = JSON.parse(localStorage.getItem(`history_fighter_${winnerName}`)) || [];
-                wHist.push('W');
-                localStorage.setItem(`history_fighter_${winnerName}`, JSON.stringify(wHist));
+                wHist.push('W'); localStorage.setItem(`history_fighter_${winnerName}`, JSON.stringify(wHist));
             }
             if (loserName !== "?" && !loserName.startsWith("Боєць")) {
                 let lHist = JSON.parse(localStorage.getItem(`history_fighter_${loserName}`)) || [];
-                lHist.push('L');
-                localStorage.setItem(`history_fighter_${loserName}`, JSON.stringify(lHist));
+                lHist.push('L'); localStorage.setItem(`history_fighter_${loserName}`, JSON.stringify(lHist));
             }
 
-            saveBracketInputs();
-            saveBracketWinners();
+            saveBracketState();
         }
 
-        function saveBracketInputs() {
-            let inputs = {};
+        function saveBracketState() {
+            let t = tournamentsData.find(x => x.id === currentTournamentId);
+            if (!t) return;
+
+            t.inputs = {};
+            t.winners = {};
+
             document.querySelectorAll(`#bracket-grid .fighter-name-wrapper`).forEach(el => {
-                inputs[el.parentElement.id] = el.innerText.trim();
+                t.inputs[el.parentElement.id] = el.innerText.trim();
             });
-            localStorage.setItem(`bracket_input_t_${currentTournamentId}`, JSON.stringify(inputs));
-        }
 
-        function saveBracketWinners() {
-            let winners = {};
             document.querySelectorAll(`#bracket-grid .fighter`).forEach(el => {
-                if (el.classList.contains('winner')) winners[el.id] = "winner";
-                if (el.classList.contains('loser')) winners[el.id] = "loser";
+                if (el.classList.contains('winner')) t.winners[el.id] = "winner";
+                if (el.classList.contains('loser')) t.winners[el.id] = "loser";
             });
-            localStorage.setItem(`bracket_winners_t_${currentTournamentId}`, JSON.stringify(winners));
+
+            saveTournamentsToServer();
         }
 
         function copyWalletAddress() {
@@ -1016,7 +942,8 @@
             });
         }
 
-        renderTournaments();
+        // Автозапуск
+        loadTournamentsFromServer();
     </script>
 </body>
 </html>
