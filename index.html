@@ -609,6 +609,7 @@
             }
         }
 
+        // Вісьмома оновлена «всеїдна» функція для читання Google Таблиці
         function loadFightersFromSheets(forceRefresh = false) {
             def('loading-text').style.display = 'block';
             let localCache = localStorage.getItem('cached_fighters_list');
@@ -621,21 +622,29 @@
             fetch(SHEET_CSV_URL)
                 .then(res => res.text())
                 .then(csvText => {
-                    const rows = csvText.split("\n").map(row => row.split(","));
+                    const lines = csvText.split(/\r?\n/);
                     fightersData = [];
-                    for (let i = 1; i < rows.length; i++) {
-                        const cols = rows[i];
+                    
+                    for (let i = 1; i < lines.length; i++) {
+                        let line = lines[i].trim();
+                        if (!line) continue;
+                        
+                        // Автовизначення: кома чи крапка з комою (залежно від локалі таблиці)
+                        let cols = line.includes(';') ? line.split(';') : line.split(',');
+                        
                         if (!cols || cols.length < 2 || !cols[1]) continue;
+                        
                         let name = cols[1].replace(/["']/g, "").trim();
-                        if (name === "" || name.includes('function')) continue;
+                        if (name === "" || name.toLowerCase().includes('function') || name === "Name") continue;
 
                         let wins = parseInt(cols[2]) || 0;
                         let losses = parseInt(cols[3]) || 0;
-                        let arms = cols[4] ? cols[4].trim() : "—";
-                        let height = cols[5] ? cols[5].trim() : "—";
-                        let weight = cols[6] ? cols[6].trim() : "—";
-                        let chin = cols[7] ? cols[7].trim() : "—";
+                        let arms = cols[4] ? cols[4].replace(/["']/g, "").trim() : "—";
+                        let height = cols[5] ? cols[5].replace(/["']/g, "").trim() : "—";
+                        let weight = cols[6] ? cols[6].replace(/["']/g, "").trim() : "—";
+                        let chin = cols[7] ? cols[7].replace(/["']/g, "").trim() : "—";
                         let awards = cols[8] ? cols[8].replace(/["']/g, "").trim() : "—";
+                        
                         let effectiveLosses = losses === 0 ? 1 : losses;
                         let kd = (wins / effectiveLosses).toFixed(2);
 
@@ -645,16 +654,20 @@
                             awards: awards || "—", kd: parseFloat(kd)
                         });
                     }
+                    
+                    // Сортуємо лідерборд по KD (як і було у твоїй початковій версії)
                     fightersData.sort((a, b) => b.kd - a.kd);
+                    
                     localStorage.setItem('cached_fighters_list', JSON.stringify(fightersData));
                     renderLeaderboard();
                 })
                 .catch(err => {
+                    console.error("Помилка парсингу таблиці:", err);
                     if (localCache) {
                         fightersData = JSON.parse(localCache);
                         renderLeaderboard();
                     } else {
-                        def('loading-text').innerText = "Помилка завантаження таблиці.";
+                        def('loading-text').innerText = "Помилка завантаження таблиці. Перевірте публікацію в інтернет.";
                     }
                 });
         }
