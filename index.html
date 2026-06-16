@@ -169,6 +169,7 @@
             gap: 12px;
             transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color var(--transition-fast), box-shadow var(--transition-fast);
             opacity: 0;
+            position: relative;
         }
         .leader-card:hover {
             transform: translateY(-2px);
@@ -202,11 +203,36 @@
         .leader-rank.rank-3 { color: #f97316; text-shadow: 0 0 8px rgba(249, 115, 22, 0.3); }
         
         .leader-name { font-weight: 700; font-size: 17px; letter-spacing: 0.3px; display: flex; align-items: center; gap: 6px; }
-        .top-crown { font-size: 16px; animation: crownPulse 1.5s ease-in-out infinite; display: inline-block; }
+        
+        /* Корона та контейнер для іскор */
+        .crown-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .top-crown { 
+            font-size: 16px; 
+            animation: crownPulse 1.5s ease-in-out infinite; 
+            display: inline-block; 
+            z-index: 5;
+        }
         @keyframes crownPulse {
             0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,215,0,0.4)); }
             50% { transform: scale(1.15) rotate(5deg); filter: drop-shadow(0 0 8px rgba(255,215,0,0.8)); }
             100% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,215,0,0.4)); }
+        }
+
+        /* Стиль для іскор-квадратиків */
+        .sparkle-particle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background-color: #ffd700;
+            box-shadow: 0 0 6px #ffea00;
+            pointer-events: none;
+            z-index: 9999;
+            border-radius: 0px; /* Суворі квадратики */
         }
 
         .leader-stats { display: flex; gap: 14px; align-items: center; }
@@ -551,21 +577,30 @@
         let fightersData = []; 
         let currentTournamentId = null;
         let currentTab = 'tournaments';
+        let sparkleInterval = null; // Інтервал для ефекту іскор
 
         function def(id){ return document.getElementById(id); }
 
+        // ЗАЛІЗОБЕТОННА функція без зависань хмари
         function loadTournamentsFromServer() {
             def('loading-tournaments').style.display = 'block';
+            def('loading-tournaments').innerText = "Синхронізація хмари...";
+            
             fetch(API_URL)
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error("Сервер повернув помилку");
+                    return res.json();
+                })
                 .then(data => {
-                    tournamentsData = data || [];
+                    // Перевіряємо на масив, щоб уникнути помилок типу .map() is not a function
+                    tournamentsData = Array.isArray(data) ? data : [];
                     renderTournaments();
                     def('loading-tournaments').style.display = 'none';
                 })
                 .catch(err => {
                     console.error("Помилка хмари:", err);
-                    def('loading-tournaments').innerText = "Помилка оновлення сіток.";
+                    def('loading-tournaments').innerText = "Турнірів поки немає. Створіть перший через адмінку!";
+                    def('tournaments-container').innerHTML = "";
                 });
         }
 
@@ -592,6 +627,13 @@
         function switchTab(tab) {
             if(currentTab === tab) return;
             currentTab = tab;
+            
+            // Чистимо іскри, якщо йдемо з вкладки Лідерборду
+            if(sparkleInterval) {
+                clearInterval(sparkleInterval);
+                sparkleInterval = null;
+            }
+
             if (tab === 'tournaments') {
                 def('tab-tournaments').classList.add('active');
                 def('tab-leaderboard').classList.remove('active');
@@ -609,7 +651,6 @@
             }
         }
 
-        // Вісьмома оновлена «всеїдна» функція для читання Google Таблиці
         function loadFightersFromSheets(forceRefresh = false) {
             def('loading-text').style.display = 'block';
             let localCache = localStorage.getItem('cached_fighters_list');
@@ -629,7 +670,6 @@
                         let line = lines[i].trim();
                         if (!line) continue;
                         
-                        // Автовизначення: кома чи крапка з комою (залежно від локалі таблиці)
                         let cols = line.includes(';') ? line.split(';') : line.split(',');
                         
                         if (!cols || cols.length < 2 || !cols[1]) continue;
@@ -655,19 +695,18 @@
                         });
                     }
                     
-                    // Сортуємо лідерборд по KD (як і було у твоїй початковій версії)
                     fightersData.sort((a, b) => b.kd - a.kd);
                     
                     localStorage.setItem('cached_fighters_list', JSON.stringify(fightersData));
                     renderLeaderboard();
                 })
                 .catch(err => {
-                    console.error("Помилка парсингу таблиці:", err);
+                    console.error("Помилка таблиці:", err);
                     if (localCache) {
                         fightersData = JSON.parse(localCache);
                         renderLeaderboard();
                     } else {
-                        def('loading-text').innerText = "Помилка завантаження таблиці. Перевірте публікацію в інтернет.";
+                        def('loading-text').innerText = "Помилка завантаження таблиці. Перевірте її публікацію.";
                     }
                 });
         }
@@ -676,9 +715,15 @@
             def('loading-text').style.display = 'none';
             const container = def('leaderboard-container');
             container.innerHTML = "";
+            
+            if(sparkleInterval) clearInterval(sparkleInterval);
+
             fightersData.forEach((f, index) => {
                 let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
-                let crownHTML = index === 0 ? `<span class="top-crown">👑</span>` : "";
+                
+                // Для Топ-1 додаємо спеціальний ідентифікатор id="first-place-crown"
+                let crownHTML = index === 0 ? `<span class="crown-container"><span class="top-crown" id="first-place-crown">👑</span></span>` : "";
+                
                 let card = document.createElement('div');
                 card.className = 'leader-card animate-fade-in';
                 card.style.animationDelay = `${index * 0.04}s`;
@@ -701,6 +746,61 @@
                 `;
                 container.appendChild(card);
             });
+
+            // Запускаємо генератор іскор-квадратиків для Топ-1
+            startCrownSparkles();
+        }
+
+        // Чистий JS генератор іскор-квадратиків, що падають
+        function startCrownSparkles() {
+            sparkleInterval = setInterval(() => {
+                const crown = def('first-place-crown');
+                if (!crown || currentTab !== 'leaderboard') return;
+
+                // Визначаємо точні координати корони на екрані
+                const rect = crown.getBoundingClientRect();
+                if (rect.top === 0 && rect.left === 0) return; // Якщо вкладка схована
+
+                // Створюємо елемент-квадратик
+                const particle = document.createElement('div');
+                particle.className = 'sparkle-particle';
+                
+                // Точка старту — центр корони
+                let startX = rect.left + rect.width / 2;
+                let startY = rect.top + rect.height / 2;
+
+                particle.style.left = startX + 'px';
+                particle.style.top = startY + 'px';
+                document.body.appendChild(particle);
+
+                // Задаємо випадкову швидкість вильоту (вгору і в боки)
+                let speedX = (Math.random() - 0.5) * 4; 
+                let speedY = -Math.random() * 3 - 1; // Завжди трохи вгору при вильоті
+                let gravity = 0.12; // Сила падіння вниз
+                let opacity = 1;
+                let currentY = startY;
+                let currentX = startX;
+
+                // Цикл анімації падіння іскри
+                function updateParticle() {
+                    speedY += gravity; // Гравітація тягне вниз
+                    currentX += speedX;
+                    currentY += speedY;
+                    opacity -= 0.015; // Поступове зникнення
+
+                    particle.style.left = currentX + 'px';
+                    particle.style.top = currentY + 'px';
+                    particle.style.opacity = opacity;
+
+                    if (opacity > 0) {
+                        requestAnimationFrame(updateParticle);
+                    } else {
+                        particle.remove();
+                    }
+                }
+                requestAnimationFrame(updateParticle);
+
+            }, 100); // Нова іскра кожні 100мс
         }
 
         function openFighterProfile(name) {
@@ -766,6 +866,13 @@
         function renderTournaments() {
             const container = def('tournaments-container');
             container.innerHTML = "";
+            
+            if (tournamentsData.length === 0) {
+                def('loading-tournaments').style.display = 'block';
+                def('loading-tournaments').innerText = "Турнірів поки немає. Додайте перший турнір в адмінці!";
+                return;
+            }
+
             tournamentsData.forEach((t, idx) => {
                 let card = document.createElement('div');
                 card.className = 'tournament-card animate-fade-in';
@@ -793,6 +900,8 @@
             let newId = tournamentsData.length > 0 ? Math.max(...tournamentsData.map(t => t.id)) + 1 : 1;
             tournamentsData.push({ id: newId, title: title, size: size, inputs: {}, winners: {} });
             saveTournamentsToServer();
+            // Сховуємо заглушку, якщо вона показувалась
+            def('loading-tournaments').style.display = 'none';
             renderTournaments();
         }
 
