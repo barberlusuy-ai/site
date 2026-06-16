@@ -212,27 +212,23 @@
             justify-content: center;
         }
         .top-crown { 
-            font-size: 16px; 
-            animation: crownPulse 1.5s ease-in-out infinite; 
+            font-size: 18px; 
+            animation: crownPulse 1.2s ease-in-out infinite; 
             display: inline-block; 
             z-index: 5;
         }
         @keyframes crownPulse {
-            0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,215,0,0.4)); }
-            50% { transform: scale(1.15) rotate(5deg); filter: drop-shadow(0 0 8px rgba(255,215,0,0.8)); }
-            100% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,215,0,0.4)); }
+            0% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 4px rgba(255,215,0,0.6)); }
+            50% { transform: scale(1.25) rotate(8deg); filter: drop-shadow(0 0 14px rgba(255,140,0,0.9)); }
+            100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 4px rgba(255,215,0,0.6)); }
         }
 
-        /* Стиль для іскор-квадратиків */
+        /* Стиль для круглих ефектних іскор */
         .sparkle-particle {
             position: fixed;
-            width: 4px;
-            height: 4px;
-            background-color: #ffd700;
-            box-shadow: 0 0 6px #ffea00;
             pointer-events: none;
             z-index: 9999;
-            border-radius: 0px; /* Суворі квадратики */
+            border-radius: 50%;
         }
 
         .leader-stats { display: flex; gap: 14px; align-items: center; }
@@ -380,7 +376,7 @@
         .btn-back { background: none; border: 2px solid #1e293b; color: #64748b; padding: 14px 28px; border-radius: 14px; cursor: pointer; margin-top: 30px; font-weight: bold; transition: all var(--transition-fast); }
         .btn-back:hover { color: white; border-color: #475569; background: rgba(255,255,255,0.02); }
 
-        .qol-refresh-container { display: flex; justify-content: center; width: 100%; max-width: 500px; margin-bottom: 15px; }
+        .qol-refresh-container { display: flex; justify: content: center; width: 100%; max-width: 500px; margin-bottom: 15px; }
         .btn-qol-refresh { background: rgba(0, 229, 255, 0.06); border: 1px solid rgba(0, 229, 255, 0.2); color: var(--accent-blue); padding: 10px 18px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all var(--transition-fast); }
         .btn-qol-refresh:hover { background: rgba(0, 229, 255, 0.12); border-color: var(--accent-blue); box-shadow: 0 0 10px var(--accent-glow); }
 
@@ -581,18 +577,18 @@
 
         function def(id){ return document.getElementById(id); }
 
-        // ЗАЛІЗОБЕТОННА функція без зависань хмари
+        // ЗАЛІЗОБЕТОННА функція з вимкненням кешу (додаємо timestamp)
         function loadTournamentsFromServer() {
             def('loading-tournaments').style.display = 'block';
             def('loading-tournaments').innerText = "Синхронізація хмари...";
             
-            fetch(API_URL)
+            // Додаємо унікальний параметр часу, щоб Vercel не віддавав закешовану версію запиту
+            fetch(`${API_URL}?t=${Date.now()}`)
                 .then(res => {
                     if (!res.ok) throw new Error("Сервер повернув помилку");
                     return res.json();
                 })
                 .then(data => {
-                    // Перевіряємо на масив, щоб уникнути помилок типу .map() is not a function
                     tournamentsData = Array.isArray(data) ? data : [];
                     renderTournaments();
                     def('loading-tournaments').style.display = 'none';
@@ -609,7 +605,11 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(tournamentsData)
-            }).catch(err => console.error("Помилка збереження:", err));
+            })
+            .then(res => {
+                if(!res.ok) console.error("Сервер не зміг зберегти дані");
+            })
+            .catch(err => console.error("Помилка збереження:", err));
         }
 
         function openModal(id) {
@@ -628,7 +628,6 @@
             if(currentTab === tab) return;
             currentTab = tab;
             
-            // Чистимо іскри, якщо йдемо з вкладки Лідерборду
             if(sparkleInterval) {
                 clearInterval(sparkleInterval);
                 sparkleInterval = null;
@@ -660,7 +659,10 @@
                 return;
             }
 
-            fetch(SHEET_CSV_URL)
+            // Для Google Sheets теж додаємо timestamp при примусовому оновленні
+            const url = forceRefresh ? `${SHEET_CSV_URL}&t=${Date.now()}` : SHEET_CSV_URL;
+
+            fetch(url)
                 .then(res => res.text())
                 .then(csvText => {
                     const lines = csvText.split(/\r?\n/);
@@ -720,8 +722,6 @@
 
             fightersData.forEach((f, index) => {
                 let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
-                
-                // Для Топ-1 додаємо спеціальний ідентифікатор id="first-place-crown"
                 let crownHTML = index === 0 ? `<span class="crown-container"><span class="top-crown" id="first-place-crown">👑</span></span>` : "";
                 
                 let card = document.createElement('div');
@@ -747,46 +747,54 @@
                 container.appendChild(card);
             });
 
-            // Запускаємо генератор іскор-квадратиків для Топ-1
+            // Запускаємо покращений магічний генератор іскор
             startCrownSparkles();
         }
 
-        // Чистий JS генератор іскор-квадратиків, що падають
+        // Потужний круглими іскрами вогняний ефект (вилітає кожні 35мс)
         function startCrownSparkles() {
             sparkleInterval = setInterval(() => {
                 const crown = def('first-place-crown');
                 if (!crown || currentTab !== 'leaderboard') return;
 
-                // Визначаємо точні координати корони на екрані
                 const rect = crown.getBoundingClientRect();
-                if (rect.top === 0 && rect.left === 0) return; // Якщо вкладка схована
+                if (rect.top === 0 && rect.left === 0) return; 
 
-                // Створюємо елемент-квадратик
                 const particle = document.createElement('div');
                 particle.className = 'sparkle-particle';
                 
-                // Точка старту — центр корони
-                let startX = rect.left + rect.width / 2;
-                let startY = rect.top + rect.height / 2;
+                // Старт з випадкового місця самої корони, щоб іскри летіли звідусіль
+                let startX = rect.left + (Math.random() * rect.width);
+                let startY = rect.top + (Math.random() * rect.height);
+
+                // Округлі та соковиті іскри з розмиттям (Glow)
+                const size = Math.random() * 5 + 3; // розмір від 3px до 8px
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // Палітра кольорів палаючого вогню
+                const colors = ['#ffd700', '#ffae42', '#ff8c00', '#ffffff', '#ff5500'];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.backgroundColor = randomColor;
+                particle.style.boxShadow = `0 0 ${Math.random() * 6 + 4}px ${randomColor}`;
 
                 particle.style.left = startX + 'px';
                 particle.style.top = startY + 'px';
                 document.body.appendChild(particle);
 
-                // Задаємо випадкову швидкість вильоту (вгору і в боки)
-                let speedX = (Math.random() - 0.5) * 4; 
-                let speedY = -Math.random() * 3 - 1; // Завжди трохи вгору при вильоті
-                let gravity = 0.12; // Сила падіння вниз
+                // Динамічний виліт
+                let speedX = (Math.random() - 0.5) * 5; 
+                let speedY = -Math.random() * 3.5 - 1.5; // Спрямовані стрімко вгору
+                let gravity = 0.14; 
                 let opacity = 1;
                 let currentY = startY;
                 let currentX = startX;
 
-                // Цикл анімації падіння іскри
                 function updateParticle() {
-                    speedY += gravity; // Гравітація тягне вниз
+                    speedY += gravity; 
                     currentX += speedX;
                     currentY += speedY;
-                    opacity -= 0.015; // Поступове зникнення
+                    opacity -= 0.02; // Час життя іскри трохи швидший для красивого згасання
 
                     particle.style.left = currentX + 'px';
                     particle.style.top = currentY + 'px';
@@ -800,7 +808,7 @@
                 }
                 requestAnimationFrame(updateParticle);
 
-            }, 100); // Нова іскра кожні 100мс
+            }, 35); // Інтенсивність збільшено у 3 рази! (Кожні 35мс)
         }
 
         function openFighterProfile(name) {
@@ -900,7 +908,6 @@
             let newId = tournamentsData.length > 0 ? Math.max(...tournamentsData.map(t => t.id)) + 1 : 1;
             tournamentsData.push({ id: newId, title: title, size: size, inputs: {}, winners: {} });
             saveTournamentsToServer();
-            // Сховуємо заглушку, якщо вона показувалась
             def('loading-tournaments').style.display = 'none';
             renderTournaments();
         }
