@@ -3,9 +3,9 @@ import json
 import os
 import urllib.request
 
-# Підтягуємо змінні для REST API твого Redis
-UPSTASH_URL = os.environ.get("REDIS_REST_URL")
-UPSTASH_TOKEN = os.environ.get("REDIS_REST_TOKEN")
+# ПРАВИЛЬНО: Вказуємо системні назви змінних. Vercel сам підставить замість них потрібні посилання та токени!
+UPSTASH_URL = os.environ.get("https://vercel.com/barberlusuy-6752s-projects/untitled-1/integrations/redis/icfg_whXxhjOIPNAFws4DrUGe9NwI/resources/storage/store_Mo4F58hp7usEyJyl/guides")
+UPSTASH_TOKEN = os.environ.get("redis://default:IWFPdrEQutgB5wuouPqpEmh6nlo88Gl9@zoo-vest-centered-95952.db.redis.io:16288")
 
 def get_from_redis():
     """Читаємо турнірну сітку з Redis через REST API"""
@@ -31,18 +31,19 @@ def get_from_redis():
 def save_to_redis(data):
     """Записуємо турнірну сітку в Redis через REST API"""
     if not UPSTASH_URL or not UPSTASH_TOKEN:
+        print("Помилка запису: Відсутні змінні оточення!")
         return False
     try:
-        # Надсилаємо POST запит для встановлення значення (SET)
         url = f"{UPSTASH_URL}/set/tournaments"
         req = urllib.request.Request(url, method="POST")
         req.add_header("Authorization", f"Bearer {UPSTASH_TOKEN}")
         req.add_header("Content-Type", "application/json")
         
-        # Упаковуємо дані в JSON-рядок для збереження
-        payload = json.dumps(json.dumps(data, ensure_ascii=False))
+        # ВИПРАВЛЕНО: Робимо один чистий json.dumps та кодуємо в байти для REST API Upstash
+        json_string = json.dumps(data, ensure_ascii=False)
+        payload = json.dumps(json_string).encode('utf-8')
         
-        with urllib.request.urlopen(req, data=payload.encode('utf-8')) as response:
+        with urllib.request.urlopen(req, data=payload) as response:
             return True
     except Exception as e:
         print(f"Помилка запису в Redis: {e}")
@@ -65,7 +66,7 @@ class handler(BaseHTTPRequestHandler):
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode('utf-8'))
             
-            # Надійно зберігаємо дані в базу redis-rose-apple
+            # Надійно зберігаємо дані в базу
             success = save_to_redis(data)
             
             if success:
